@@ -77,7 +77,7 @@ const Header = () => {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2">
+            <DropdownMenuItem className="gap-2" onClick={() => navigate("/profile")}>
               <User className="h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
