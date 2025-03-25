@@ -1,6 +1,6 @@
 
 import { useState, useCallback, useEffect } from "react";
-import { Chat, Message } from "../types/chat";
+import { Message } from "../types/chat";
 import { initialMessages } from "../data/mockChats";
 
 export function useMessages() {
@@ -22,7 +22,7 @@ export function useMessages() {
       content: content,
       sender: "You",
       timestamp: timestamp,
-      status: "sent",
+      status: "sent" as const,
       isMine: true
     };
     

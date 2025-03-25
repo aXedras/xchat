@@ -42,7 +42,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, isTyping }: ChatWindowProps
       content,
       sender: "You",
       timestamp,
-      status: "sent",
+      status: "sent" as const,
       isMine: true,
       isMacro: checkForMacros(content)
     };
