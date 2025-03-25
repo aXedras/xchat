@@ -1,31 +1,22 @@
 
-import { useState } from "react";
 import { Chat } from "../types/chat";
-import { initialChats } from "../data/mockChats";
+import { useActiveChats } from "./useActiveChats";
+import { useArchivedChats } from "./useArchivedChats";
 import { useToast } from "./use-toast";
 
 export function useChatLists() {
-  const [activeChats, setActiveChats] = useState<Chat[]>(initialChats);
-  const [archivedChats, setArchivedChats] = useState<Chat[]>([]);
+  const { activeChats, setActiveChats, deleteActiveChat } = useActiveChats();
+  const { archivedChats, setArchivedChats, deleteArchivedChat } = useArchivedChats();
   const { toast } = useToast();
   
   const deleteChat = (chatId: string) => {
-    const chatToDelete = [...activeChats, ...archivedChats].find(chat => chat.id === chatId);
+    let deletedChat = deleteActiveChat(chatId);
     
-    if (!chatToDelete) return;
-    
-    if (activeChats.some(chat => chat.id === chatId)) {
-      setActiveChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
-    } else {
-      setArchivedChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
+    if (!deletedChat) {
+      deletedChat = deleteArchivedChat(chatId);
     }
     
-    toast({
-      title: "Chat deleted",
-      description: `"${chatToDelete.name}" has been deleted.`,
-    });
-    
-    return chatToDelete;
+    return deletedChat;
   };
   
   const archiveChat = (chatId: string) => {
