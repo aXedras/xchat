@@ -1,5 +1,6 @@
+
 import { useRef, useEffect, useState } from "react";
-import { Chat, Message } from "@/pages/Dashboard";
+import { Chat, Message } from "@/types/chat";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Check, CheckCheck, Info, Users, Building } from "lucide-react";
 import { cn } from "@/lib/utils";
