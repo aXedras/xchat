@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Header from "@/components/Header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,8 +11,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { toast } from "sonner";
-import { User, Edit, Key, Shield, Bell } from "lucide-react";
+import { User, Edit, Key, Shield, Bell, Upload } from "lucide-react";
 import { getInitials } from "@/utils/format";
+import { fileToBase64, validateImageFile } from "@/utils/fileUtils";
 
 const profileFormSchema = z.object({
   username: z.string().min(2, {
@@ -54,8 +54,8 @@ type NotificationsFormValues = z.infer<typeof notificationsFormSchema>;
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Mock user data - in a real app this would come from authentication
   const [userData, setUserData] = useState({
     name: "Jane Doe",
     email: "jane.doe@example.com",
@@ -104,7 +104,6 @@ const Profile = () => {
   };
 
   const onSecuritySubmit = (data: SecurityFormValues) => {
-    // In a real app, this would update the user's password
     console.log("Password updated:", data);
     securityForm.reset({
       currentPassword: "",
@@ -115,9 +114,39 @@ const Profile = () => {
   };
 
   const onNotificationsSubmit = (data: NotificationsFormValues) => {
-    // In a real app, this would update notification preferences
     console.log("Notification settings updated:", data);
     toast.success("Notification preferences updated");
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      toast.error(validation.message);
+      return;
+    }
+
+    try {
+      const base64 = await fileToBase64(file);
+      setUserData({
+        ...userData,
+        avatarUrl: base64,
+      });
+      toast.success("Avatar updated successfully");
+    } catch (error) {
+      console.error("Error converting file:", error);
+      toast.error("Failed to update avatar");
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   return (
@@ -128,16 +157,26 @@ const Profile = () => {
         <div className="max-w-5xl mx-auto">
           <div className="flex flex-col md:flex-row gap-6 mb-8">
             <div className="flex-shrink-0 flex flex-col items-center">
-              <Avatar className="h-32 w-32 md:h-40 md:w-40">
+              <Avatar className="h-32 w-32 md:h-40 md:w-40 cursor-pointer" onClick={handleAvatarClick}>
                 <AvatarImage src={userData.avatarUrl} alt={userData.name} />
                 <AvatarFallback className="text-2xl">{getInitials(userData.name)}</AvatarFallback>
               </Avatar>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="mt-4"
-                onClick={() => toast.info("Avatar upload not implemented in this demo")}
+                className="mt-4 gap-2"
+                onClick={handleAvatarClick}
               >
+                <Upload className="h-4 w-4" />
                 Change Avatar
               </Button>
             </div>
