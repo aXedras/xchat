@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, Loader2 } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => void;
@@ -13,11 +13,25 @@ interface LoginFormProps {
 const LoginForm = ({ onLogin, isLoading }: LoginFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showQrScanner, setShowQrScanner] = useState(false);
+  const [showMagicLinkInput, setShowMagicLinkInput] = useState(false);
+  const [magicLinkEmail, setMagicLinkEmail] = useState("");
+  const [sendingMagicLink, setSendingMagicLink] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onLogin(email, password);
+  };
+
+  const handleMagicLinkSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSendingMagicLink(true);
+    
+    // Simulate sending a magic link
+    setTimeout(() => {
+      setSendingMagicLink(false);
+      setMagicLinkSent(true);
+    }, 1500);
   };
 
   return (
@@ -75,21 +89,67 @@ const LoginForm = ({ onLogin, isLoading }: LoginFormProps) => {
           type="button" 
           variant="outline" 
           className="w-full transition-all duration-200"
-          onClick={() => setShowQrScanner(!showQrScanner)}
+          onClick={() => setShowMagicLinkInput(!showMagicLinkInput)}
         >
-          <QrCode className="mr-2 h-4 w-4" />
-          Sign in with QR Code
+          <Mail className="mr-2 h-4 w-4" />
+          Sign in with Magic Link
         </Button>
       </div>
       
-      {showQrScanner && (
-        <div className="mt-4 p-4 border border-input rounded-lg bg-muted/50 text-center">
-          <p className="text-sm text-muted-foreground mb-2">
-            QR Code login is not available in this demo
-          </p>
-          <div className="w-32 h-32 mx-auto border-2 border-dashed border-muted-foreground/40 rounded flex items-center justify-center">
-            <span className="text-xs text-muted-foreground">QR Scanner Placeholder</span>
-          </div>
+      {showMagicLinkInput && (
+        <div className="mt-4 p-4 border border-input rounded-lg bg-muted/50">
+          {!magicLinkSent ? (
+            <form onSubmit={handleMagicLinkSubmit} className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="magic-link-email">Enter your email address</Label>
+                <Input
+                  id="magic-link-email"
+                  type="email"
+                  placeholder="your.email@company.com"
+                  required
+                  value={magicLinkEmail}
+                  onChange={(e) => setMagicLinkEmail(e.target.value)}
+                  disabled={sendingMagicLink}
+                />
+              </div>
+              <Button 
+                type="submit" 
+                disabled={sendingMagicLink || !magicLinkEmail}
+                className="w-full"
+              >
+                {sendingMagicLink ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  "Send Magic Link"
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                We'll send a secure login link to your email
+              </p>
+            </form>
+          ) : (
+            <div className="text-center">
+              <Mail className="h-12 w-12 mx-auto text-primary mb-3" />
+              <h3 className="font-medium text-lg">Check your inbox</h3>
+              <p className="text-sm text-muted-foreground mt-1 mb-3">
+                We've sent a magic link to<br />
+                <span className="font-medium text-foreground">{magicLinkEmail}</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Didn't receive an email? Check your spam folder or
+                <button 
+                  type="button" 
+                  className="text-primary ml-1 hover:underline"
+                  onClick={() => setMagicLinkSent(false)}
+                >
+                  try again
+                </button>
+              </p>
+            </div>
+          )}
         </div>
       )}
     </form>
