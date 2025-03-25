@@ -9,9 +9,10 @@ interface ChatWindowProps {
   chat: Chat;
   messages: Message[];
   onSendMessage?: (chatId: string, content: string) => void;
+  isTyping?: boolean;
 }
 
-const ChatWindow = ({ chat, messages, onSendMessage }: ChatWindowProps) => {
+const ChatWindow = ({ chat, messages, onSendMessage, isTyping }: ChatWindowProps) => {
   const [localMessages, setLocalMessages] = useState<Message[]>(messages);
   
   useEffect(() => {
@@ -56,7 +57,11 @@ const ChatWindow = ({ chat, messages, onSendMessage }: ChatWindowProps) => {
   return (
     <div className="flex flex-col h-full">
       <ChatHeader chat={chat} />
-      <MessageList messages={localMessages} />
+      <MessageList 
+        messages={localMessages} 
+        isTyping={isTyping} 
+        chatName={chat.name} 
+      />
       <MessageInput chatId={chat.id} onSendMessage={handleSendMessage} />
     </div>
   );

@@ -9,6 +9,7 @@ export interface Chat {
   isGroup?: boolean;
   isCompany?: boolean;
   members?: string[];
+  isTyping?: boolean;
 }
 
 export interface Message {

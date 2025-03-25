@@ -1,6 +1,6 @@
 
 import { Message } from "@/types/chat";
-import { Check, CheckCheck, FileUp, PhoneOutgoing } from "lucide-react";
+import { Check, CheckCheck, FileUp, PhoneOutgoing, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -19,11 +19,25 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       case "sent":
         return <Check className="h-3 w-3 text-muted-foreground" />;
       case "delivered":
-        return <Check className="h-3 w-3 text-blue-500" />;
-      case "read":
         return <CheckCheck className="h-3 w-3 text-blue-500" />;
+      case "read":
+        return <Eye className="h-3 w-3 text-blue-500" />;
       default:
         return null;
+    }
+  };
+
+  // Get status text based on message status
+  const getStatusText = (status: Message["status"]) => {
+    switch (status) {
+      case "sent":
+        return "Sent";
+      case "delivered":
+        return "Delivered";
+      case "read":
+        return "Read";
+      default:
+        return "";
     }
   };
 
@@ -188,7 +202,12 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         
         <div className="text-xs mt-1 opacity-70 flex items-center justify-end gap-1">
           {message.timestamp}
-          {message.isMine && getStatusIcon(message.status)}
+          {message.isMine && (
+            <div className="flex items-center ml-1 gap-0.5" title={getStatusText(message.status)}>
+              {getStatusIcon(message.status)}
+              <span className="text-[10px] text-muted-foreground ml-0.5">{getStatusText(message.status)}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

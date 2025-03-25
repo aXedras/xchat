@@ -23,17 +23,11 @@ const Dashboard = () => {
     deleteChat,
     archiveChat,
     restoreChat,
-    addMessage
+    addMessage,
+    isTyping
   } = useChatState();
 
   const [showArchived, setShowArchived] = useState(false);
-
-  const simulateMessageInArchivedChat = () => {
-    if (archivedChats.length > 0) {
-      const randomChat = archivedChats[0];
-      addMessage(randomChat.id, "New message in archived chat");
-    }
-  };
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -97,6 +91,8 @@ const Dashboard = () => {
             <ChatWindow 
               chat={selectedChat} 
               messages={messages[selectedChat.id] || []} 
+              onSendMessage={addMessage}
+              isTyping={isTyping}
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">

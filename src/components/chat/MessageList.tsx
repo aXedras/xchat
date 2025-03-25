@@ -3,19 +3,22 @@ import { useRef, useEffect } from "react";
 import { Message } from "@/types/chat";
 import ChatMessage from "./ChatMessage";
 import EmptyState from "./EmptyState";
+import TypingIndicator from "./TypingIndicator";
 
 interface MessageListProps {
   messages: Message[];
+  isTyping?: boolean;
+  chatName?: string;
 }
 
-const MessageList = ({ messages }: MessageListProps) => {
+const MessageList = ({ messages, isTyping, chatName = "User" }: MessageListProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  if (messages.length === 0) {
+  if (messages.length === 0 && !isTyping) {
     return <EmptyState />;
   }
 
@@ -25,6 +28,9 @@ const MessageList = ({ messages }: MessageListProps) => {
         {messages.map((message) => (
           <ChatMessage key={message.id} message={message} />
         ))}
+        {isTyping && (
+          <TypingIndicator name={chatName.split(" - ")[0]} />
+        )}
         <div ref={messagesEndRef} />
       </div>
     </div>
