@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LogOut, Search, Bell, User, X } from "lucide-react";
@@ -16,16 +15,28 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Header = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showSearch, setShowSearch] = useState(false);
   
   const handleLogout = () => {
     navigate("/");
   };
   
+  const handleLogoClick = () => {
+    if (location.pathname === '/') {
+      return;
+    } else {
+      navigate("/dashboard");
+    }
+  };
+  
   return (
     <header className="h-16 border-b border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur-sm">
       <div className="flex items-center">
-        <div className="flex items-center gap-2">
+        <div 
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={handleLogoClick}
+        >
           <div className="h-8 w-8 rounded-full bg-gradient-to-r from-gold to-platinum flex items-center justify-center">
             <span className="text-sm font-bold text-white">aX</span>
           </div>
