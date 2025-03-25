@@ -15,9 +15,10 @@ interface ProfileTabContentProps {
   };
   setUserData: (data: any) => void;
   isEditing: boolean;
+  setIsEditing: (isEditing: boolean) => void;
 }
 
-const ProfileTabContent = ({ userData, setUserData, isEditing }: ProfileTabContentProps) => {
+const ProfileTabContent = ({ userData, setUserData, isEditing, setIsEditing }: ProfileTabContentProps) => {
   return (
     <Tabs defaultValue="profile" className="w-full">
       <TabsList className="grid grid-cols-3 max-w-md mb-6">
@@ -36,7 +37,12 @@ const ProfileTabContent = ({ userData, setUserData, isEditing }: ProfileTabConte
       </TabsList>
       
       <TabsContent value="profile">
-        <ProfileForm userData={userData} setUserData={setUserData} isEditing={isEditing} />
+        <ProfileForm 
+          userData={userData} 
+          setUserData={setUserData} 
+          isEditing={isEditing}
+          setIsEditing={setIsEditing}  
+        />
       </TabsContent>
       
       <TabsContent value="security">

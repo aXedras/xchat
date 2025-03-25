@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -33,9 +32,10 @@ interface ProfileFormProps {
   };
   setUserData: (data: any) => void;
   isEditing: boolean;
+  setIsEditing: (isEditing: boolean) => void;
 }
 
-export const ProfileForm = ({ userData, setUserData, isEditing }: ProfileFormProps) => {
+export const ProfileForm = ({ userData, setUserData, isEditing, setIsEditing }: ProfileFormProps) => {
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
@@ -55,6 +55,7 @@ export const ProfileForm = ({ userData, setUserData, isEditing }: ProfileFormPro
       role: data.role || "",
     });
     toast.success("Profile updated successfully");
+    setIsEditing(false);
   };
 
   return (

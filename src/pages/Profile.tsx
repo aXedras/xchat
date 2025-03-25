@@ -31,7 +31,8 @@ const Profile = () => {
           <ProfileTabContent 
             userData={userData} 
             setUserData={setUserData} 
-            isEditing={isEditing} 
+            isEditing={isEditing}
+            setIsEditing={setIsEditing}
           />
         </div>
       </div>
