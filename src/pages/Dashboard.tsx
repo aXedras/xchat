@@ -4,25 +4,39 @@ import Header from "@/components/Header";
 import ChatList from "@/components/ChatList";
 import ChatWindow from "@/components/ChatWindow";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Archive, ChevronDown, ChevronRight } from "lucide-react";
 import CompanySelector from "@/components/CompanySelector";
 import { Dialog } from "@/components/ui/dialog";
 import { useChatState } from "@/hooks/useChatState";
 import { Chat } from "@/types/chat";
+import { cn } from "@/lib/utils";
 
 const Dashboard = () => {
   const {
     selectedChat,
     showNewChat,
     chats,
+    archivedChats,
     messages,
     handleNewChat,
     handleChatSelect,
     createNewChat,
     setShowNewChat,
     deleteChat,
-    archiveChat
+    archiveChat,
+    restoreChat,
+    addMessage
   } = useChatState();
+
+  const [showArchived, setShowArchived] = useState(false);
+
+  // Demo function to simulate receiving a message in an archived chat
+  const simulateMessageInArchivedChat = () => {
+    if (archivedChats.length > 0) {
+      const randomChat = archivedChats[0];
+      addMessage(randomChat.id, "New message in archived chat");
+    }
+  };
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -44,6 +58,41 @@ const Dashboard = () => {
             onDeleteChat={deleteChat}
             onArchiveChat={archiveChat}
           />
+          
+          {archivedChats.length > 0 && (
+            <div className="mt-auto border-t border-border">
+              <button
+                className={cn(
+                  "w-full p-3 flex items-center text-sm text-muted-foreground hover:bg-accent/40 transition-colors",
+                  showArchived && "bg-accent/20"
+                )}
+                onClick={() => setShowArchived(!showArchived)}
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                <span>Archived</span>
+                <span className="ml-2 text-xs bg-muted rounded-full h-5 min-w-5 flex items-center justify-center px-1.5">
+                  {archivedChats.length}
+                </span>
+                <span className="ml-auto">
+                  {showArchived ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </span>
+              </button>
+              
+              {showArchived && (
+                <div className="max-h-60 overflow-y-auto">
+                  <ChatList 
+                    chats={archivedChats} 
+                    selectedChat={selectedChat} 
+                    onSelectChat={handleChatSelect}
+                    onDeleteChat={deleteChat}
+                    onArchiveChat={() => {}} // Not used for archived chats
+                    onRestoreChat={restoreChat}
+                    isArchiveSection={true}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
         
         <div className="flex-1 flex flex-col">

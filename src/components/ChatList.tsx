@@ -12,6 +12,8 @@ interface ChatListProps {
   onSelectChat: (chat: Chat) => void;
   onDeleteChat?: (chatId: string) => void;
   onArchiveChat?: (chatId: string) => void;
+  onRestoreChat?: (chatId: string) => void;
+  isArchiveSection?: boolean;
 }
 
 const ChatList = ({ 
@@ -19,7 +21,9 @@ const ChatList = ({
   selectedChat, 
   onSelectChat,
   onDeleteChat = () => {}, 
-  onArchiveChat = () => {}
+  onArchiveChat = () => {},
+  onRestoreChat = () => {},
+  isArchiveSection = false
 }: ChatListProps) => {
   const getInitials = (name: string) => {
     return name
@@ -87,7 +91,9 @@ const ChatList = ({
           key={chat.id}
           chat={chat}
           onDelete={onDeleteChat}
-          onArchive={onArchiveChat}
+          onArchive={isArchiveSection ? undefined : onArchiveChat}
+          onRestore={isArchiveSection ? onRestoreChat : undefined}
+          isArchived={isArchiveSection}
         >
           <div
             className={cn(
