@@ -45,7 +45,7 @@ export function useMessages() {
       setMessages(prev => ({
         ...prev,
         [chatId]: prev[chatId].map(msg => 
-          msg.id === messageId ? { ...msg, status: "delivered" } : msg
+          msg.id === messageId ? { ...msg, status: "delivered" as const } : msg
         )
       }));
       
@@ -54,7 +54,7 @@ export function useMessages() {
         setMessages(prev => ({
           ...prev,
           [chatId]: prev[chatId].map(msg => 
-            msg.id === messageId ? { ...msg, status: "read" } : msg
+            msg.id === messageId ? { ...msg, status: "read" as const } : msg
           )
         }));
       }, 3000);

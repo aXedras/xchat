@@ -3,6 +3,7 @@ import { useChat } from "./useChat";
 import { useChatLists } from "./useChatLists";
 import { useMessages } from "./useMessages";
 import { useChatCreation } from "./useChatCreation";
+import { Message } from "@/types/chat";
 
 export function useChatState() {
   const { 
@@ -94,12 +95,12 @@ export function useChatState() {
           const chatName = [...activeChats, ...archivedChats].find(c => c.id === chatId)?.name || "";
           const senderName = chatName.split(" - ")[0];
           
-          const newMessage = {
+          const newMessage: Message = {
             id: `sim-${Date.now()}`,
             content: response,
             sender: senderName,
             timestamp,
-            status: "delivered",
+            status: "delivered" as const,
             isMine: false
           };
           
