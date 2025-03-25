@@ -40,11 +40,13 @@ const MessageInput = ({ chatId, onSendMessage }: MessageInputProps) => {
   };
   
   const checkForMacros = (text: string) => {
-    // Very basic macro detection
-    // In a real app, this would be more sophisticated
+    // More comprehensive macro detection
     if (text.startsWith("ASK ") || 
         text.startsWith("BID ") || 
-        text.includes("Airwaybill for")) {
+        text.startsWith("OFFER ") ||
+        text.includes("Airwaybill for") ||
+        text.includes("CoO for") ||
+        text.includes("Analysis for")) {
       return true;
     }
     return false;

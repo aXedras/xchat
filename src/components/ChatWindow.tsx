@@ -18,6 +18,18 @@ const ChatWindow = ({ chat, messages, onSendMessage }: ChatWindowProps) => {
     setLocalMessages(messages);
   }, [messages]);
 
+  const checkForMacros = (text: string) => {
+    if (text.startsWith("ASK ") || 
+        text.startsWith("BID ") || 
+        text.startsWith("OFFER ") ||
+        text.includes("Airwaybill for") ||
+        text.includes("CoO for") ||
+        text.includes("Analysis for")) {
+      return true;
+    }
+    return false;
+  };
+
   const handleSendMessage = (content: string) => {
     const now = new Date();
     const hours = now.getHours();
@@ -31,7 +43,7 @@ const ChatWindow = ({ chat, messages, onSendMessage }: ChatWindowProps) => {
       timestamp,
       status: "sent",
       isMine: true,
-      isMacro: content.startsWith("ASK ") || content.startsWith("BID ") || content.includes("Airwaybill for")
+      isMacro: checkForMacros(content)
     };
     
     setLocalMessages(prev => [...prev, newMessage]);

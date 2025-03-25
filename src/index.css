@@ -113,8 +113,12 @@
     @apply chat-bubble bg-secondary text-secondary-foreground;
   }
   
+  .macro-message {
+    @apply relative;
+  }
+  
   .macro-text {
-    @apply font-mono text-xs bg-muted p-1 rounded;
+    @apply font-mono text-xs bg-muted/50 p-1 rounded;
   }
   
   .chat-input {
