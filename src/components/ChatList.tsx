@@ -5,6 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Users, Building } from "lucide-react";
 import ChatContextMenu from "./ChatContextMenu";
+import { getInitials } from "@/utils/format";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ChatListProps {
   chats: Chat[];
@@ -25,14 +32,6 @@ const ChatList = ({
   onRestoreChat = () => {},
   isArchiveSection = false
 }: ChatListProps) => {
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
   
   const getChatIcon = (chat: Chat) => {
     if (chat.avatar) {
@@ -65,69 +64,97 @@ const ChatList = ({
     }
   };
   
-  const formatChatName = (chat: Chat) => {
-    if (chat.isGroup || chat.isCompany) {
-      return chat.name;
-    }
+  // Helper function to extract chat details (individual + company name)
+  const extractChatDetails = (chat: Chat) => {
+    if (chat.isGroup) return null;
     
-    // Extract name and company for individual chats
+    // For individual chats in format "Person Name - Company Name"
     const parts = chat.name.split(' - ');
     if (parts.length === 2) {
-      return (
-        <>
-          <span className="font-medium">{parts[0]}</span>
-          <span className="text-muted-foreground text-xs"> • {parts[1]}</span>
-        </>
-      );
+      return {
+        person: parts[0],
+        company: parts[1]
+      };
     }
     
-    return chat.name;
+    return null;
   };
 
   return (
     <div className="flex-1 overflow-y-auto scroll-hidden">
-      {chats.map((chat) => (
-        <ChatContextMenu 
-          key={chat.id}
-          chat={chat}
-          onDelete={onDeleteChat}
-          onArchive={isArchiveSection ? undefined : onArchiveChat}
-          onRestore={isArchiveSection ? onRestoreChat : undefined}
-          isArchived={isArchiveSection}
-        >
-          <div
-            className={cn(
-              "flex items-center gap-3 p-3 hover:bg-accent/40 transition-colors cursor-pointer",
-              selectedChat?.id === chat.id && "bg-accent"
-            )}
-            onClick={() => onSelectChat(chat)}
-          >
-            {getChatIcon(chat)}
-            
-            <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-baseline gap-2">
-                <div className="font-medium truncate">
-                  {formatChatName(chat)}
-                </div>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {chat.timestamp}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center mt-1">
-                <p className="text-sm text-muted-foreground truncate pr-2">
-                  {chat.lastMessage}
-                </p>
-                {chat.unread > 0 && (
-                  <Badge variant="default" className="rounded-full h-5 min-w-5 flex items-center justify-center">
-                    {chat.unread}
-                  </Badge>
+      <TooltipProvider>
+        {chats.map((chat) => {
+          const chatDetails = extractChatDetails(chat);
+          
+          return (
+            <ChatContextMenu 
+              key={chat.id}
+              chat={chat}
+              onDelete={onDeleteChat}
+              onArchive={isArchiveSection ? undefined : onArchiveChat}
+              onRestore={isArchiveSection ? onRestoreChat : undefined}
+              isArchived={isArchiveSection}
+            >
+              <div
+                className={cn(
+                  "flex items-center gap-3 p-3 hover:bg-accent/40 transition-colors cursor-pointer",
+                  selectedChat?.id === chat.id && "bg-accent"
                 )}
+                onClick={() => onSelectChat(chat)}
+              >
+                {getChatIcon(chat)}
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-baseline gap-2">
+                    <div className="font-medium truncate">
+                      {chat.isGroup ? (
+                        chat.name
+                      ) : chatDetails ? (
+                        chatDetails.company
+                      ) : (
+                        chat.name
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {chat.timestamp}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center mt-1">
+                    {chatDetails ? (
+                      <p className="text-sm text-muted-foreground truncate pr-2">
+                        {chatDetails.person}: {chat.lastMessage}
+                      </p>
+                    ) : chat.isGroup && chat.members && chat.members.length > 3 ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className="text-sm text-muted-foreground truncate pr-2">
+                            {chat.lastMessage}
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs p-2">
+                          <p className="text-xs font-medium mb-1">Participants:</p>
+                          <p className="text-xs">{chat.members.join(", ")}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <p className="text-sm text-muted-foreground truncate pr-2">
+                        {chat.lastMessage}
+                      </p>
+                    )}
+                    
+                    {chat.unread > 0 && (
+                      <Badge variant="default" className="rounded-full h-5 min-w-5 flex items-center justify-center">
+                        {chat.unread}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </ChatContextMenu>
-      ))}
+            </ChatContextMenu>
+          );
+        })}
+      </TooltipProvider>
     </div>
   );
 };
