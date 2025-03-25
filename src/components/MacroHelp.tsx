@@ -17,22 +17,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const macros = [
   {
     macro: "ASK [qty]x[weight][unit] [metal] [quality] [location] [date] +[premium]",
     example: "ASK 10x1KG AU LBMA good delivery LND fixing 18.03 +0.3",
-    description: "Looking to buy gold/silver/platinum with specified parameters"
+    description: "Requesting a price quote to buy precious metals (buy-side inquiry)"
   },
   {
     macro: "BID [qty]x[weight][unit] [metal] [quality] [location] [date] +[premium]",
     example: "BID 5x400oz AU LBMA LND fixing 19.03 +0.15",
-    description: "Offering to buy gold/silver/platinum with bid price"
+    description: "Submitting a specific price to buy precious metals (buy-side order)"
   },
   {
     macro: "OFFER [qty]x[weight][unit] [metal] [quality] [location] [date] +[premium]",
     example: "OFFER 20x1KG AG 999.9 ZRH fixing 20.03 +1.2",
-    description: "Offering to sell gold/silver/platinum with offer price"
+    description: "Submitting a specific price to sell precious metals (sell-side order)"
   },
   {
     macro: "Ask Airwaybill for #[number]",
@@ -67,6 +73,10 @@ const MacroHelp = () => {
           </DialogDescription>
         </DialogHeader>
         
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-sm">
+          <strong>Trading Terminology:</strong> In precious metals trading, <span className="font-semibold">BID</span> represents buying interest, while <span className="font-semibold">OFFER</span> represents selling interest. <span className="font-semibold">ASK</span> is used for requesting quotes when looking to buy.
+        </div>
+        
         <Table>
           <TableHeader>
             <TableRow>
@@ -95,15 +105,42 @@ const MacroHelp = () => {
         <div className="mt-6">
           <h4 className="font-semibold mb-2">Metal Codes</h4>
           <div className="grid grid-cols-3 gap-4">
-            <div className="p-3 bg-accent rounded-md">
-              <span className="font-semibold">AU</span> - Gold
-            </div>
-            <div className="p-3 bg-accent rounded-md">
-              <span className="font-semibold">AG</span> - Silver
-            </div>
-            <div className="p-3 bg-accent rounded-md">
-              <span className="font-semibold">PT</span> - Platinum
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="p-3 bg-accent rounded-md cursor-help">
+                    <span className="font-semibold">AU</span> - Gold
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  From Latin "Aurum"
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="p-3 bg-accent rounded-md cursor-help">
+                    <span className="font-semibold">AG</span> - Silver
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  From Latin "Argentum"
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="p-3 bg-accent rounded-md cursor-help">
+                    <span className="font-semibold">PT</span> - Platinum
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  From Spanish "Platina"
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <div className="p-3 bg-accent rounded-md">
               <span className="font-semibold">PD</span> - Palladium
             </div>
