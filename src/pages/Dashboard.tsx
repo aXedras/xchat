@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import Header from "@/components/Header";
 import ChatList from "@/components/ChatList";
@@ -8,7 +7,6 @@ import { PlusCircle, Archive, ChevronDown, ChevronRight } from "lucide-react";
 import CompanySelector from "@/components/CompanySelector";
 import { Dialog } from "@/components/ui/dialog";
 import { useChatState } from "@/hooks/useChatState";
-import { Chat } from "@/types/chat";
 import { cn } from "@/lib/utils";
 
 const Dashboard = () => {
@@ -30,7 +28,6 @@ const Dashboard = () => {
 
   const [showArchived, setShowArchived] = useState(false);
 
-  // Demo function to simulate receiving a message in an archived chat
   const simulateMessageInArchivedChat = () => {
     if (archivedChats.length > 0) {
       const randomChat = archivedChats[0];
