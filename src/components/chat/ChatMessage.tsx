@@ -43,7 +43,13 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   // Translate macro content to human-readable form
   const translateMacroContent = (content: string) => {
     if (content.startsWith("ASK")) {
-      // Parse the ASK macro
+      // Check if this is an Airwaybill request
+      if (content.includes("Airwaybill")) {
+        const orderNumber = content.match(/#(\d+)/)?.[1] || "the order";
+        return `Could you please send me the Airwaybill for shipping number #${orderNumber}?`;
+      }
+      
+      // Parse the ASK macro for metals
       const parts = content.split(" ");
       if (parts.length >= 4) {
         const quantity = parts[1]; // e.g., "10x1KG"
@@ -101,7 +107,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       }
       return `I'd like to sell ${content.substring(6).trim()}. This is my asking price.`;
     }
-    else if (content.includes("Airwaybill for")) {
+    else if (content.includes("Airwaybill")) {
       const orderNumber = content.match(/#(\d+)/)?.[1] || "the order";
       return `Could you please send me the Airwaybill for shipping number #${orderNumber}?`;
     }
@@ -156,7 +162,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           )}
         </div>
         
-        {shouldShowActions && showingActions && (
+        {shouldShowActions && (
           <div className="flex justify-between mt-3 pt-2 border-t border-border/30">
             <Button 
               variant="secondary" 

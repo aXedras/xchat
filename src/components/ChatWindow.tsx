@@ -22,7 +22,7 @@ const ChatWindow = ({ chat, messages, onSendMessage }: ChatWindowProps) => {
     if (text.startsWith("ASK ") || 
         text.startsWith("BID ") || 
         text.startsWith("OFFER ") ||
-        text.includes("Airwaybill for") ||
+        text.includes("Airwaybill") ||
         text.includes("CoO for") ||
         text.includes("Analysis for")) {
       return true;
