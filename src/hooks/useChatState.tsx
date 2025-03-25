@@ -2,12 +2,14 @@
 import { useState } from "react";
 import { Chat, Message, Company, User } from "../types/chat";
 import { initialChats, initialMessages } from "../data/mockChats";
+import { useToast } from "./use-toast";
 
 export function useChatState() {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
   const [chats, setChats] = useState<Chat[]>(initialChats);
   const [messages, setMessages] = useState<Record<string, Message[]>>(initialMessages);
+  const { toast } = useToast();
   
   const handleNewChat = () => {
     setShowNewChat(true);
@@ -15,6 +17,50 @@ export function useChatState() {
   
   const handleChatSelect = (chat: Chat) => {
     setSelectedChat(chat);
+  };
+
+  // New function to delete a chat
+  const deleteChat = (chatId: string) => {
+    // Find the chat to be deleted
+    const chatToDelete = chats.find(chat => chat.id === chatId);
+    
+    if (!chatToDelete) return;
+    
+    // Remove the chat from the chats list
+    setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
+    
+    // Remove the chat messages
+    setMessages(prevMessages => {
+      const newMessages = { ...prevMessages };
+      delete newMessages[chatId];
+      return newMessages;
+    });
+    
+    // If the deleted chat was selected, set selectedChat to null
+    if (selectedChat?.id === chatId) {
+      setSelectedChat(null);
+    }
+    
+    // Show success toast
+    toast({
+      title: "Chat deleted",
+      description: `"${chatToDelete.name}" has been deleted.`,
+    });
+  };
+  
+  // New function to archive a chat (for future implementation)
+  const archiveChat = (chatId: string) => {
+    // Find the chat to be archived
+    const chatToArchive = chats.find(chat => chat.id === chatId);
+    
+    if (!chatToArchive) return;
+    
+    // In a real application, we would mark the chat as archived here
+    // For now, we'll just show a toast notification
+    toast({
+      title: "Chat archived",
+      description: `"${chatToArchive.name}" has been archived.`,
+    });
   };
 
   const createNewChat = (chatData: {
@@ -92,6 +138,8 @@ export function useChatState() {
     setMessages,
     handleNewChat,
     handleChatSelect,
-    createNewChat
+    createNewChat,
+    deleteChat,
+    archiveChat
   };
 }

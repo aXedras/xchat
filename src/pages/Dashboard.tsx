@@ -19,7 +19,9 @@ const Dashboard = () => {
     handleNewChat,
     handleChatSelect,
     createNewChat,
-    setShowNewChat
+    setShowNewChat,
+    deleteChat,
+    archiveChat
   } = useChatState();
 
   return (
@@ -38,7 +40,9 @@ const Dashboard = () => {
           <ChatList 
             chats={chats} 
             selectedChat={selectedChat} 
-            onSelectChat={handleChatSelect} 
+            onSelectChat={handleChatSelect}
+            onDeleteChat={deleteChat}
+            onArchiveChat={archiveChat}
           />
         </div>
         

@@ -4,14 +4,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Users, Building } from "lucide-react";
+import ChatContextMenu from "./ChatContextMenu";
 
 interface ChatListProps {
   chats: Chat[];
   selectedChat: Chat | null;
   onSelectChat: (chat: Chat) => void;
+  onDeleteChat?: (chatId: string) => void;
+  onArchiveChat?: (chatId: string) => void;
 }
 
-const ChatList = ({ chats, selectedChat, onSelectChat }: ChatListProps) => {
+const ChatList = ({ 
+  chats, 
+  selectedChat, 
+  onSelectChat,
+  onDeleteChat = () => {}, 
+  onArchiveChat = () => {}
+}: ChatListProps) => {
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -74,38 +83,44 @@ const ChatList = ({ chats, selectedChat, onSelectChat }: ChatListProps) => {
   return (
     <div className="flex-1 overflow-y-auto scroll-hidden">
       {chats.map((chat) => (
-        <div
+        <ChatContextMenu 
           key={chat.id}
-          className={cn(
-            "flex items-center gap-3 p-3 hover:bg-accent/40 transition-colors cursor-pointer",
-            selectedChat?.id === chat.id && "bg-accent"
-          )}
-          onClick={() => onSelectChat(chat)}
+          chat={chat}
+          onDelete={onDeleteChat}
+          onArchive={onArchiveChat}
         >
-          {getChatIcon(chat)}
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-baseline gap-2">
-              <div className="font-medium truncate">
-                {formatChatName(chat)}
-              </div>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {chat.timestamp}
-              </span>
-            </div>
+          <div
+            className={cn(
+              "flex items-center gap-3 p-3 hover:bg-accent/40 transition-colors cursor-pointer",
+              selectedChat?.id === chat.id && "bg-accent"
+            )}
+            onClick={() => onSelectChat(chat)}
+          >
+            {getChatIcon(chat)}
             
-            <div className="flex justify-between items-center mt-1">
-              <p className="text-sm text-muted-foreground truncate pr-2">
-                {chat.lastMessage}
-              </p>
-              {chat.unread > 0 && (
-                <Badge variant="default" className="rounded-full h-5 min-w-5 flex items-center justify-center">
-                  {chat.unread}
-                </Badge>
-              )}
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-baseline gap-2">
+                <div className="font-medium truncate">
+                  {formatChatName(chat)}
+                </div>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {chat.timestamp}
+                </span>
+              </div>
+              
+              <div className="flex justify-between items-center mt-1">
+                <p className="text-sm text-muted-foreground truncate pr-2">
+                  {chat.lastMessage}
+                </p>
+                {chat.unread > 0 && (
+                  <Badge variant="default" className="rounded-full h-5 min-w-5 flex items-center justify-center">
+                    {chat.unread}
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </ChatContextMenu>
       ))}
     </div>
   );
