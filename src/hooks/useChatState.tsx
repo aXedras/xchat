@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Chat, Message } from "../types/chat";
 import { initialChats, initialMessages } from "../data/mockChats";
@@ -20,82 +19,65 @@ export function useChatState() {
     setSelectedChat(chat);
   };
 
-  // Delete a chat
   const deleteChat = (chatId: string) => {
-    // Find the chat to be deleted
     const chatToDelete = [...activeChats, ...archivedChats].find(chat => chat.id === chatId);
     
     if (!chatToDelete) return;
     
-    // Remove the chat from active or archived chats
     if (activeChats.some(chat => chat.id === chatId)) {
       setActiveChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
     } else {
       setArchivedChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
     }
     
-    // Remove the chat messages
     setMessages(prevMessages => {
       const newMessages = { ...prevMessages };
       delete newMessages[chatId];
       return newMessages;
     });
     
-    // If the deleted chat was selected, set selectedChat to null
     if (selectedChat?.id === chatId) {
       setSelectedChat(null);
     }
     
-    // Show success toast
     toast({
       title: "Chat deleted",
       description: `"${chatToDelete.name}" has been deleted.`,
     });
   };
   
-  // Archive a chat
   const archiveChat = (chatId: string) => {
-    // Find the chat to be archived
     const chatToArchive = activeChats.find(chat => chat.id === chatId);
     
     if (!chatToArchive) return;
     
-    // Move the chat to archived chats
     setActiveChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
     setArchivedChats(prevChats => [chatToArchive, ...prevChats]);
     
-    // Show success toast
     toast({
       title: "Chat archived",
       description: `"${chatToArchive.name}" has been moved to archive.`,
     });
   };
   
-  // Restore a chat from archive
   const restoreChat = (chatId: string) => {
-    // Find the chat to be restored
     const chatToRestore = archivedChats.find(chat => chat.id === chatId);
     
     if (!chatToRestore) return;
     
-    // Move the chat back to active chats
     setArchivedChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
     setActiveChats(prevChats => [chatToRestore, ...prevChats]);
     
-    // Show success toast
     toast({
       title: "Chat restored",
       description: `"${chatToRestore.name}" has been restored to your messages.`,
     });
   };
 
-  // Function to add a new message to a chat (to simulate receiving a message in an archived chat)
   const addMessage = (chatId: string, content: string) => {
-    // Check if the chat is in archived list
     const isArchived = archivedChats.some(chat => chat.id === chatId);
     
     if (isArchived) {
-      // If chat is archived, move it back to active
       const chatToRestore = archivedChats.find(chat => chat.id === chatId);
       if (chatToRestore) {
         setArchivedChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
@@ -108,7 +90,6 @@ export function useChatState() {
       }
     }
     
-    // Add the new message
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
       content: content,
@@ -123,7 +104,6 @@ export function useChatState() {
       [chatId]: [...(prev[chatId] || []), newMessage]
     }));
     
-    // Update the last message preview
     const chatList = [...activeChats, ...archivedChats];
     const chatToUpdate = chatList.find(chat => chat.id === chatId);
     
@@ -134,9 +114,7 @@ export function useChatState() {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       
-      // Update the chat in the appropriate list
       if (isArchived) {
-        // Already moved to active chats above
       } else {
         setActiveChats(prevChats => 
           prevChats.map(chat => chat.id === chatId ? updatedChat : chat)
@@ -153,10 +131,8 @@ export function useChatState() {
   }) => {
     const { chatType, company, selectedUsers, groupName } = chatData;
     
-    // Generate a unique ID for the new chat
     const newId = `new-${Date.now()}`;
     
-    // Format current timestamp
     const now = new Date();
     const hours = now.getHours();
     const minutes = now.getMinutes().toString().padStart(2, '0');
@@ -165,7 +141,6 @@ export function useChatState() {
     let newChat: Chat;
     
     if (chatType === 'direct') {
-      // Direct message with a single user
       const selectedUser = selectedUsers[0];
       newChat = {
         id: newId,
@@ -175,7 +150,6 @@ export function useChatState() {
         unread: 0,
       };
     } else if (chatType === 'group') {
-      // Group chat with multiple users
       newChat = {
         id: newId,
         name: groupName || `${company.name} Group`,
@@ -186,7 +160,6 @@ export function useChatState() {
         members: ["You", ...selectedUsers.map(user => user.name)]
       };
     } else {
-      // Broadcast to entire company
       newChat = {
         id: newId,
         name: `${company.name} Broadcast`,
@@ -197,14 +170,12 @@ export function useChatState() {
       };
     }
     
-    // Initialize empty messages array for the new chat
     setMessages(prev => ({
       ...prev,
       [newId]: []
     }));
     
-    // Add new chat to the list and set it as selected
-    setChats(prev => [newChat, ...prev]);
+    setActiveChats(prev => [newChat, ...prev]);
     setSelectedChat(newChat);
     setShowNewChat(false);
   };
