@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +19,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Company, User as UserType } from "@/pages/Dashboard";
+import { Company, User as UserType } from "@/types/chat";
 
 interface CompanySelectorProps {
   onClose: () => void;
@@ -129,12 +128,10 @@ const CompanySelector = ({ onClose, onCreateChat }: CompanySelectorProps) => {
       return;
     }
     
-    // Get the actual User objects (not just IDs)
     const selectedUserObjects = selectedUsers.map(
       userId => selectedCompany.users.find(u => u.id === userId)
     ).filter(Boolean) as UserType[];
     
-    // Call the onCreateChat callback with the chat data
     onCreateChat({
       chatType,
       company: selectedCompany,
@@ -142,7 +139,6 @@ const CompanySelector = ({ onClose, onCreateChat }: CompanySelectorProps) => {
       groupName: chatType === "group" ? groupName : undefined
     });
     
-    // Show success message
     const chatTypeLabel = chatType === "direct" ? "direct message" : 
                           chatType === "group" ? "group chat" : "broadcast";
     toast.success(`Created ${chatTypeLabel} successfully`);
@@ -157,7 +153,6 @@ const CompanySelector = ({ onClose, onCreateChat }: CompanySelectorProps) => {
       .substring(0, 2);
   };
   
-  // Show company selection first, then user selection
   return (
     <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
       <DialogHeader>
@@ -170,7 +165,6 @@ const CompanySelector = ({ onClose, onCreateChat }: CompanySelectorProps) => {
       </DialogHeader>
       
       {!selectedCompany ? (
-        // Company selection view
         <div className="flex-1 overflow-hidden flex flex-col">
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -224,7 +218,6 @@ const CompanySelector = ({ onClose, onCreateChat }: CompanySelectorProps) => {
           </div>
         </div>
       ) : (
-        // User selection view
         <div className="flex-1 overflow-hidden flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
