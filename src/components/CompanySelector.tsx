@@ -20,20 +20,19 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-
-interface Company {
-  id: string;
-  name: string;
-  location: string;
-  type: string;
-  users: { id: string; name: string; role: string }[];
-}
+import { Company, User as UserType } from "@/pages/Dashboard";
 
 interface CompanySelectorProps {
   onClose: () => void;
+  onCreateChat: (chatData: {
+    chatType: 'direct' | 'group' | 'broadcast';
+    company: Company;
+    selectedUsers: UserType[];
+    groupName?: string;
+  }) => void;
 }
 
-const CompanySelector = ({ onClose }: CompanySelectorProps) => {
+const CompanySelector = ({ onClose, onCreateChat }: CompanySelectorProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -130,12 +129,23 @@ const CompanySelector = ({ onClose }: CompanySelectorProps) => {
       return;
     }
     
-    // In a real app, you would create the chat here
+    // Get the actual User objects (not just IDs)
+    const selectedUserObjects = selectedUsers.map(
+      userId => selectedCompany.users.find(u => u.id === userId)
+    ).filter(Boolean) as UserType[];
+    
+    // Call the onCreateChat callback with the chat data
+    onCreateChat({
+      chatType,
+      company: selectedCompany,
+      selectedUsers: selectedUserObjects,
+      groupName: chatType === "group" ? groupName : undefined
+    });
+    
+    // Show success message
     const chatTypeLabel = chatType === "direct" ? "direct message" : 
                           chatType === "group" ? "group chat" : "broadcast";
-    
     toast.success(`Created ${chatTypeLabel} successfully`);
-    onClose();
   };
   
   const getInitials = (name: string) => {
@@ -335,6 +345,13 @@ const CompanySelector = ({ onClose }: CompanySelectorProps) => {
           >
             <UserPlus className="mr-2 h-4 w-4" />
             {chatType === "direct" ? "Start Conversation" : "Create Group"}
+          </Button>
+        )}
+        
+        {selectedCompany && chatType === "broadcast" && (
+          <Button onClick={handleCreateChat}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Create Broadcast
           </Button>
         )}
       </DialogFooter>

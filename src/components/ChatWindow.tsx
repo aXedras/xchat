@@ -1,5 +1,4 @@
-
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Chat, Message } from "@/pages/Dashboard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Check, CheckCheck, Info, Users, Building } from "lucide-react";
@@ -17,14 +16,20 @@ import {
 interface ChatWindowProps {
   chat: Chat;
   messages: Message[];
+  onSendMessage?: (chatId: string, content: string) => void;
 }
 
-const ChatWindow = ({ chat, messages }: ChatWindowProps) => {
+const ChatWindow = ({ chat, messages, onSendMessage }: ChatWindowProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [localMessages, setLocalMessages] = useState<Message[]>(messages);
+  
+  useEffect(() => {
+    setLocalMessages(messages);
+  }, [messages]);
   
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [localMessages]);
   
   const getInitials = (name: string) => {
     return name
@@ -99,8 +104,6 @@ const ChatWindow = ({ chat, messages }: ChatWindowProps) => {
   };
   
   const formatMacroMessage = (content: string) => {
-    // Highlight macros - this is a simple implementation
-    // In a real app, you would have a more robust parser
     if (content.startsWith("ASK")) {
       return (
         <TooltipProvider>
@@ -136,6 +139,29 @@ const ChatWindow = ({ chat, messages }: ChatWindowProps) => {
     return content;
   };
 
+  const handleSendMessage = (content: string) => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const timestamp = `${hours}:${minutes} ${hours >= 12 ? 'PM' : 'AM'}`;
+    
+    const newMessage: Message = {
+      id: `${chat.id}-${Date.now()}`,
+      content,
+      sender: "You",
+      timestamp,
+      status: "sent",
+      isMine: true,
+      isMacro: content.startsWith("ASK ") || content.startsWith("BID ") || content.includes("Airwaybill for")
+    };
+    
+    setLocalMessages(prev => [...prev, newMessage]);
+    
+    if (onSendMessage) {
+      onSendMessage(chat.id, content);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="h-16 border-b border-border flex items-center px-4 justify-between">
@@ -158,7 +184,7 @@ const ChatWindow = ({ chat, messages }: ChatWindowProps) => {
       </div>
       
       <div className="flex-1 p-4 overflow-y-auto scroll-hidden bg-accent/10">
-        {messages.length === 0 ? (
+        {localMessages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6">
             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
               <Info className="h-6 w-6 text-muted-foreground" />
@@ -170,7 +196,7 @@ const ChatWindow = ({ chat, messages }: ChatWindowProps) => {
           </div>
         ) : (
           <div className="space-y-4">
-            {messages.map((message) => (
+            {localMessages.map((message) => (
               <div
                 key={message.id}
                 className={cn(
@@ -206,7 +232,7 @@ const ChatWindow = ({ chat, messages }: ChatWindowProps) => {
         )}
       </div>
       
-      <MessageInput chatId={chat.id} />
+      <MessageInput chatId={chat.id} onSendMessage={handleSendMessage} />
     </div>
   );
 };

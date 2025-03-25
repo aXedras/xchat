@@ -7,9 +7,10 @@ import { toast } from "sonner";
 
 interface MessageInputProps {
   chatId: string;
+  onSendMessage?: (content: string) => void;
 }
 
-const MessageInput = ({ chatId }: MessageInputProps) => {
+const MessageInput = ({ chatId, onSendMessage }: MessageInputProps) => {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   
@@ -17,6 +18,11 @@ const MessageInput = ({ chatId }: MessageInputProps) => {
     if (!message.trim()) return;
     
     setIsSending(true);
+    
+    // Call the onSendMessage callback if provided
+    if (onSendMessage) {
+      onSendMessage(message.trim());
+    }
     
     // Simulate sending a message
     setTimeout(() => {

@@ -30,11 +30,24 @@ export interface Message {
   isMacro?: boolean;
 }
 
+export interface User {
+  id: string;
+  name: string;
+  role: string;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  location: string;
+  type: string;
+  users: User[];
+}
+
 const Dashboard = () => {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
-  
-  const chats: Chat[] = [
+  const [chats, setChats] = useState<Chat[]>([
     {
       id: "1",
       name: "Jane Smith - Argor-Heraeus",
@@ -76,9 +89,9 @@ const Dashboard = () => {
       unread: 0,
       avatar: "https://source.unsplash.com/random/40x40/?portrait&3"
     }
-  ];
+  ]);
   
-  const messages: Record<string, Message[]> = {
+  const [messages, setMessages] = useState<Record<string, Message[]>>({
     "1": [
       {
         id: "1-1",
@@ -140,7 +153,7 @@ const Dashboard = () => {
         isMine: false
       }
     ]
-  };
+  });
   
   const handleNewChat = () => {
     setShowNewChat(true);
@@ -148,6 +161,70 @@ const Dashboard = () => {
   
   const handleChatSelect = (chat: Chat) => {
     setSelectedChat(chat);
+  };
+
+  const createNewChat = (chatData: {
+    chatType: 'direct' | 'group' | 'broadcast';
+    company: Company;
+    selectedUsers: User[];
+    groupName?: string;
+  }) => {
+    const { chatType, company, selectedUsers, groupName } = chatData;
+    
+    // Generate a unique ID for the new chat
+    const newId = `new-${Date.now()}`;
+    
+    // Format current timestamp
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const timestamp = `${hours}:${minutes} ${hours >= 12 ? 'PM' : 'AM'}`;
+    
+    let newChat: Chat;
+    
+    if (chatType === 'direct') {
+      // Direct message with a single user
+      const selectedUser = selectedUsers[0];
+      newChat = {
+        id: newId,
+        name: `${selectedUser.name} - ${company.name}`,
+        lastMessage: "No messages yet",
+        timestamp: timestamp,
+        unread: 0,
+      };
+    } else if (chatType === 'group') {
+      // Group chat with multiple users
+      newChat = {
+        id: newId,
+        name: groupName || `${company.name} Group`,
+        lastMessage: "No messages yet",
+        timestamp: timestamp,
+        unread: 0,
+        isGroup: true,
+        members: ["You", ...selectedUsers.map(user => user.name)]
+      };
+    } else {
+      // Broadcast to entire company
+      newChat = {
+        id: newId,
+        name: `${company.name} Broadcast`,
+        lastMessage: "No messages yet",
+        timestamp: timestamp,
+        unread: 0,
+        isCompany: true
+      };
+    }
+    
+    // Initialize empty messages array for the new chat
+    setMessages(prev => ({
+      ...prev,
+      [newId]: []
+    }));
+    
+    // Add new chat to the list and set it as selected
+    setChats(prev => [newChat, ...prev]);
+    setSelectedChat(newChat);
+    setShowNewChat(false);
   };
 
   return (
@@ -195,7 +272,7 @@ const Dashboard = () => {
       </div>
       
       <Dialog open={showNewChat} onOpenChange={setShowNewChat}>
-        <CompanySelector onClose={() => setShowNewChat(false)} />
+        <CompanySelector onClose={() => setShowNewChat(false)} onCreateChat={createNewChat} />
       </Dialog>
     </div>
   );
