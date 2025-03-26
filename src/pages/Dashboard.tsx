@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import Header from "@/components/Header";
 import ChatList from "@/components/ChatList";
@@ -97,9 +98,9 @@ const Dashboard = () => {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center mb-4">
-                <span className="text-2xl font-bold text-accent-foreground">aX</span>
+                <span className="text-2xl font-bold text-accent-foreground">xC</span>
               </div>
-              <h2 className="text-2xl font-semibold mb-2">Welcome to aXedras Chat</h2>
+              <h2 className="text-2xl font-semibold mb-2">Welcome to the xChat</h2>
               <p className="text-muted-foreground max-w-md">
                 Select a conversation or start a new chat with companies and professionals in the precious metals industry
               </p>

@@ -39,9 +39,9 @@ const Header = () => {
           onClick={handleLogoClick}
         >
           <div className="h-8 w-8 rounded-full bg-gradient-to-r from-gold to-platinum flex items-center justify-center">
-            <span className="text-sm font-bold text-white">aX</span>
+            <span className="text-sm font-bold text-white">xC</span>
           </div>
-          <span className="font-semibold text-lg">aXedras</span>
+          <span className="font-semibold text-lg">xChat</span>
         </div>
       </div>
       
