@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ const Header = () => {
   };
   
   return (
-    <header className="h-16 border-b border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur-sm">
+    <header className="h-16 border-b border-border flex items-center justify-between px-4 bg-gradient-to-r from-background/95 via-background/80 to-background/95 backdrop-blur-sm shadow-sm">
       <div className="flex items-center">
         <div 
           className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
