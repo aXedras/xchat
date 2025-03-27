@@ -38,9 +38,9 @@ const Index = () => {
       <div className="w-full max-w-md p-8 glass-card rounded-2xl animate-scale-in">
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gold to-platinum flex items-center justify-center mb-4">
-            <span className="text-2xl font-bold text-white">aX</span>
+            <span className="text-2xl font-bold text-white">xC</span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">aXedras Chat</h1>
+          <h1 className="text-3xl font-bold tracking-tight">xChat</h1>
           <p className="text-muted-foreground mt-2 text-center text-balance">
             Professional chat platform for the precious metals industry
           </p>
@@ -56,7 +56,7 @@ const Index = () => {
       </div>
       
       <footer className="mt-8 text-center text-sm text-muted-foreground">
-        <p>aXedras Professional Chat &copy; {new Date().getFullYear()}</p>
+        <p>xChat &copy; {new Date().getFullYear()}</p>
         <p className="mt-1">Connecting the precious metals industry securely</p>
       </footer>
     </div>
