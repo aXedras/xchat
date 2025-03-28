@@ -32,16 +32,16 @@ const Header = () => {
   };
   
   return (
-    <header className="h-16 border-b border-border flex items-center justify-between px-4 bg-gradient-to-r from-background/95 via-background/80 to-background/95 backdrop-blur-sm shadow-sm">
+    <header className="h-16 border-b border-border flex items-center justify-between px-4 bg-gradient-to-r from-gold/90 via-gold/70 to-gold-light/80 backdrop-blur-sm shadow-md">
       <div className="flex items-center">
         <div 
           className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={handleLogoClick}
         >
-          <div className="h-8 w-8 rounded-full bg-gradient-to-r from-gold to-platinum flex items-center justify-center">
+          <div className="h-8 w-8 rounded-full bg-gradient-to-r from-gold-dark to-platinum flex items-center justify-center">
             <span className="text-sm font-bold text-white">xC</span>
           </div>
-          <span className="font-semibold text-lg">xChat</span>
+          <span className="font-semibold text-lg text-primary-foreground">xChat</span>
         </div>
       </div>
       
@@ -57,7 +57,7 @@ const Header = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 hover:bg-gold-dark/20"
               onClick={() => setShowSearch(false)}
             >
               <X className="h-4 w-4" />
@@ -67,13 +67,18 @@ const Header = () => {
           <Button
             variant="ghost"
             size="icon"
+            className="text-primary-foreground hover:bg-gold-dark/20"
             onClick={() => setShowSearch(true)}
           >
             <Search className="h-5 w-5" />
           </Button>
         )}
         
-        <Button variant="ghost" size="icon">
+        <Button 
+          variant="ghost" 
+          size="icon"
+          className="text-primary-foreground hover:bg-gold-dark/20"
+        >
           <Bell className="h-5 w-5" />
         </Button>
         
