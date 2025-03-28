@@ -32,7 +32,7 @@ const Header = () => {
   };
   
   return (
-    <header className="h-16 border-b border-border flex items-center justify-between px-4 bg-gradient-to-r from-gold/90 via-gold/70 to-gold-light/80 backdrop-blur-sm shadow-md">
+    <header className="h-16 border-b border-border flex items-center justify-between px-4 bg-gradient-to-r from-gold-light/90 via-gold/95 to-gold-dark/90 backdrop-blur-sm shadow-md">
       <div className="flex items-center">
         <div 
           className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
