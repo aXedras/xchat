@@ -1,69 +1,108 @@
-# Welcome to your Lovable project
 
-## Project info
+# xChat - Professional Chat Platform for the Precious Metals Industry
 
-**URL**: https://lovable.dev/projects/ffc72dc6-942f-4239-9355-1cac22445c61
+xChat is a specialized messaging platform designed for professionals in the precious metals industry, enabling secure and efficient communication.
 
-## How can I edit this code?
+## Quick Start
 
-There are several ways of editing your application.
+### Prerequisites
 
-**Use Lovable**
+- [Node.js](https://nodejs.org/) (v16 or newer)
+- npm (comes with Node.js) or [yarn](https://yarnpkg.com/)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/ffc72dc6-942f-4239-9355-1cac22445c61) and start prompting.
+### Installation
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
+1. Clone the repository to your local machine:
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+git clone <your-repository-url>
+cd xchat
 ```
 
-**Edit a file directly in GitHub**
+2. Install project dependencies:
+```sh
+npm install
+# or
+yarn install
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. Start the development server:
+```sh
+npm run dev
+# or
+yarn dev
+```
 
-**Use GitHub Codespaces**
+4. Open your browser and navigate to:
+```
+http://localhost:8080
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Demo Login Credentials
 
-## What technologies are used for this project?
+Use these credentials to log in to the demo version:
+- **Email**: demo@axedras.com
+- **Password**: password
 
-This project is built with .
+## Project Structure
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```
+src/
+├── components/     # UI components
+├── data/           # Mock data and constants
+├── hooks/          # Custom React hooks
+├── lib/            # Utility libraries
+├── pages/          # Page components
+├── services/       # API services
+├── types/          # TypeScript type definitions
+└── utils/          # Utility functions
+```
 
-## How can I deploy this project?
+## Features
 
-Simply open [Lovable](https://lovable.dev/projects/ffc72dc6-942f-4239-9355-1cac22445c61) and click on Share -> Publish.
+- **User Authentication:** Secure login system
+- **Real-time Messaging:** Send and receive messages instantly
+- **Company Directory:** Browse and connect with companies in the precious metals sector
+- **Message Archive:** Archive and restore conversations
+- **Profile Management:** Update user profile and preferences
+- **Responsive Design:** Works on desktop and mobile devices
 
-## I want to use a custom domain - is that possible?
+## Available Scripts
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+- `npm run dev` - Start the development server
+- `npm run build` - Build the app for production
+- `npm run preview` - Preview the production build locally
+
+## Technology Stack
+
+- **React** - UI library
+- **TypeScript** - Type-safe JavaScript
+- **Vite** - Build tool and development server
+- **Tailwind CSS** - Utility-first CSS framework
+- **shadcn/ui** - UI component library
+- **React Router** - Client-side routing
+- **React Query** - Data fetching and state management
+
+## Extending the Application
+
+### Adding Real Backend Integration
+
+The application currently uses mock data. To connect to a real backend:
+
+1. Configure API endpoints in `src/services/apiClient.ts`
+2. Replace mock calls in hooks with actual API calls
+3. Set up authentication to work with your backend services
+
+### Adding New Features
+
+1. Create new components in the `components/` directory
+2. Add new pages in the `pages/` directory
+3. Configure routes in `App.tsx`
+4. Add necessary hooks and services
+
+## License
+
+[MIT License](LICENSE)
+
+## Contact
+
+For questions or support, please contact [your-email@example.com](mailto:your-email@example.com).
