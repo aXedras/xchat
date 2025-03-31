@@ -37,6 +37,46 @@ yarn dev
 http://localhost:8080
 ```
 
+## Docker Support
+
+### Building the Docker Image
+
+To build the Docker image locally:
+
+```sh
+docker build -t xchat:latest .
+```
+
+### Running the Docker Container
+
+To run the container locally:
+
+```sh
+docker run -p 8080:80 xchat:latest
+```
+
+Then access the application at `http://localhost:8080` in your browser.
+
+### Deploying to Kubernetes
+
+1. Ensure you have kubectl configured to connect to your Kubernetes cluster.
+
+2. Create a simple deployment and service:
+
+```sh
+# Create deployment
+kubectl create deployment xchat --image=<your-registry>/xchat:latest
+
+# Expose the deployment
+kubectl expose deployment xchat --type=LoadBalancer --port=80
+```
+
+Or apply a Kubernetes configuration file:
+
+```sh
+kubectl apply -f kubernetes-manifest.yml
+```
+
 ## Demo Login Credentials
 
 Use these credentials to log in to the demo version:

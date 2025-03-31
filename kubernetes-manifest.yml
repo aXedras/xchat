@@ -1,0 +1,42 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xchat
+  labels:
+    app: xchat
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: xchat
+  template:
+    metadata:
+      labels:
+        app: xchat
+    spec:
+      containers:
+      - name: xchat
+        image: xchat:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xchat-service
+spec:
+  selector:
+    app: xchat
+  ports:
+  - port: 80
+    targetPort: 80
+  type: LoadBalancer
