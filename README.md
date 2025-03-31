@@ -57,6 +57,20 @@ docker run -p 8080:80 xchat:latest
 
 Then access the application at `http://localhost:8080` in your browser.
 
+## CI/CD Pipeline
+
+This repository includes a GitHub Actions workflow that automatically builds the Docker image when code is pushed to the main branch or when a pull request is created.
+
+To enable automatic pushing to a Docker registry:
+
+1. Add your Docker registry credentials to your GitHub repository secrets:
+   - Go to your GitHub repository → Settings → Secrets and Variables → Actions
+   - Add the following secrets:
+     - `DOCKERHUB_USERNAME`: Your Docker Hub username
+     - `DOCKERHUB_TOKEN`: Your Docker Hub access token
+
+2. Uncomment the "push" job in the `.github/workflows/docker-build.yml` file and update the image name in the tags.
+
 ### Deploying to Kubernetes
 
 1. Ensure you have kubectl configured to connect to your Kubernetes cluster.
