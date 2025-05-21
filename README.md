@@ -1,5 +1,6 @@
-
 # xChat - Professional Chat Platform for the Precious Metals Industry
+
+[![Build Status](https://github.com/YOUR_USERNAME/xchat/actions/workflows/docker-build.yml/badge.svg)](https://github.com/YOUR_USERNAME/xchat/actions/workflows/docker-build.yml)
 
 xChat is a specialized messaging platform designed for professionals in the precious metals industry, enabling secure and efficient communication.
 
@@ -59,7 +60,12 @@ Then access the application at `http://localhost:8080` in your browser.
 
 ## CI/CD Pipeline
 
-This repository includes a GitHub Actions workflow that automatically builds the Docker image when code is pushed to the main branch or when a pull request is created.
+This repository includes a GitHub Actions workflow that:
+1. Lints the codebase
+2. Builds the application
+3. Builds a Docker image
+
+The workflow runs automatically when code is pushed to the main branch or when a pull request is created.
 
 To enable automatic pushing to a Docker registry:
 

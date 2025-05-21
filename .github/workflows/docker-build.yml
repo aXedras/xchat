@@ -1,5 +1,5 @@
 
-name: Docker Build and Push
+name: Build, Lint and Docker
 
 on:
   push:
@@ -8,7 +8,30 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run lint
+      run: npm run lint
+      
+    - name: Build application
+      run: npm run build
+      
+  docker-build:
+    needs: lint-and-build
     runs-on: ubuntu-latest
     
     steps:
@@ -31,7 +54,7 @@ jobs:
 
   # Uncomment the following job if you want to push to a registry
   # push:
-  #   needs: build
+  #   needs: docker-build
   #   if: github.event_name != 'pull_request'
   #   runs-on: ubuntu-latest
   #   
