@@ -91,6 +91,39 @@ Or apply a Kubernetes configuration file:
 kubectl apply -f kubernetes-manifest.yml
 ```
 
+## Connecting to the Backend
+
+xChat can connect to either a custom WebSocket backend or Supabase Realtime for message distribution.
+
+### Custom WebSocket Backend
+
+To connect to a custom WebSocket backend:
+
+1. Set the WebSocket URL environment variable when building or running the application:
+
+```sh
+# For development
+VITE_WS_URL=ws://your-backend-url/ws npm run dev
+
+# For Docker
+docker run -p 8080:80 -e VITE_WS_URL=ws://your-backend-url/ws xchat:latest
+```
+
+2. The frontend will automatically attempt to connect to the specified WebSocket endpoint.
+
+3. Your backend should implement the following message types:
+   - `message`: New chat messages
+   - `typing`: Typing indicators
+   - `read`: Message read receipts
+   - `delivered`: Message delivery confirmations
+
+### Backend API Integration
+
+If you're implementing your own backend, it should expose these endpoints:
+
+- WebSocket connection for real-time messaging
+- REST API for chat history, user management, etc.
+
 ## Demo Login Credentials
 
 Use these credentials to log in to the demo version:
@@ -102,6 +135,7 @@ Use these credentials to log in to the demo version:
 ```
 src/
 ├── components/     # UI components
+├── config/         # Configuration files
 ├── data/           # Mock data and constants
 ├── hooks/          # Custom React hooks
 ├── lib/            # Utility libraries
@@ -140,11 +174,11 @@ src/
 
 ### Adding Real Backend Integration
 
-The application currently uses mock data. To connect to a real backend:
+The application supports connecting to a real backend through:
 
-1. Configure API endpoints in `src/services/apiClient.ts`
-2. Replace mock calls in hooks with actual API calls
-3. Set up authentication to work with your backend services
+1. WebSockets for real-time messaging
+2. REST API for data operations
+3. Environment configuration for different deployment scenarios
 
 ### Adding New Features
 

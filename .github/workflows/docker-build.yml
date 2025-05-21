@@ -26,6 +26,8 @@ jobs:
         tags: xchat:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          VITE_WS_URL=${{ secrets.VITE_WS_URL || 'ws://api.example.com/ws' }}
 
   # Uncomment the following job if you want to push to a registry
   # push:
@@ -54,3 +56,5 @@ jobs:
   #       tags: yourusername/xchat:latest
   #       cache-from: type=gha
   #       cache-to: type=gha,mode=max
+  #       build-args: |
+  #         VITE_WS_URL=${{ secrets.VITE_WS_URL || 'ws://api.example.com/ws' }}
