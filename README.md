@@ -1,6 +1,7 @@
+
 # xChat - Professional Chat Platform for the Precious Metals Industry
 
-[![Build Status](https://github.com/YOUR_USERNAME/xchat/actions/workflows/docker-build.yml/badge.svg)](https://github.com/YOUR_USERNAME/xchat/actions/workflows/docker-build.yml)
+[![Build Status](https://github.com/marcopersi/xchat/actions/workflows/docker-build.yml/badge.svg)](https://github.com/marcopersi/xchat/actions/workflows/docker-build.yml)
 
 xChat is a specialized messaging platform designed for professionals in the precious metals industry, enabling secure and efficient communication.
 
