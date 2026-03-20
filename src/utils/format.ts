@@ -13,3 +13,9 @@ export const getInitials = (name: string): string => {
     .toUpperCase()
     .substring(0, 2);
 };
+
+export const formatChatTimestamp = (date: Date): string => {
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  return `${hours}:${minutes} ${hours >= 12 ? "PM" : "AM"}`;
+};

@@ -1,11 +1,17 @@
 
+import { useMemo } from "react";
 import { useChat } from "./useChat";
 import { useChatLists } from "./useChatLists";
 import { useMessages } from "./useMessages";
 import { useChatCreation } from "./useChatCreation";
-import { Message } from "@/types/chat";
+import { useQuoteRequests } from "./useQuoteRequests";
+import { realtimeBus } from "@/services/realtimeBus";
+import { useChatSynchronization } from "./useChatSynchronization";
+import { useOutgoingMessage } from "./useOutgoingMessage";
+import { useQuoteWorkflowActions } from "./useQuoteWorkflowActions";
 
 export function useChatState() {
+  const realtimeOriginId = useMemo(() => `origin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, []);
   const { 
     selectedChat, 
     setSelectedChat, 
@@ -32,88 +38,80 @@ export function useChatState() {
     typingStatus,
     setTypingIndicator
   } = useMessages();
+
+  const {
+    quoteRequests,
+    quoteResponses,
+    tradeDeals,
+    quoteRequestsByChat,
+    quoteResponsesByRequest,
+    tradeDealsByRequest,
+    createOutgoingQuoteRequest,
+    addQuoteResponse,
+    updateQuoteResponse,
+    addTradeDeal,
+    upsertIncomingQuoteRequest,
+    upsertIncomingQuoteResponse,
+    upsertIncomingTradeDeal,
+  } = useQuoteRequests();
   
   const { 
     createNewChat 
   } = useChatCreation(setActiveChats, setSelectedChat, setShowNewChat, setMessages);
-  
-  // Custom addMessage that integrates with the chat lists
-  const addMessage = (chatId: string, content: string) => {
-    // Show typing indicator before sending a message
-    setTypingIndicator(chatId, false);
-    
-    const isArchived = archivedChats.some(chat => chat.id === chatId);
-    
-    const updateChatList = (chatId: string, content: string, timestamp: string) => {
-      const chatList = [...activeChats, ...archivedChats];
-      const chatToUpdate = chatList.find(chat => chat.id === chatId);
-      
-      if (chatToUpdate) {
-        const updatedChat = {
-          ...chatToUpdate,
-          lastMessage: content,
-          timestamp: timestamp,
-        };
-        
-        setActiveChats(prevChats => 
-          prevChats.map(chat => chat.id === chatId ? updatedChat : chat)
-        );
-      }
-    };
-    
-    addMessageBase(chatId, content, isArchived, restoreChat, updateChatList);
-    
-    // If this is a selected chat that was deleted, update it
-    if (selectedChat?.id === chatId && !activeChats.find(c => c.id === chatId) && !archivedChats.find(c => c.id === chatId)) {
-      const updatedChat = [...activeChats, ...archivedChats].find(c => c.id === chatId);
-      if (updatedChat) {
-        setSelectedChat(updatedChat);
-      }
+  const { appendWorkflowMessage, updateChatListEntry, addIncomingRealtimeMessage } = useChatSynchronization({
+    realtimeOriginId,
+    activeChats,
+    archivedChats,
+    setActiveChats,
+    setMessages,
+    addMessageBase,
+    restoreChat,
+    upsertIncomingQuoteRequest,
+    upsertIncomingQuoteResponse,
+    upsertIncomingTradeDeal,
+  });
+
+  const { addMessage } = useOutgoingMessage({
+    realtimeOriginId,
+    activeChats,
+    archivedChats,
+    selectedChat,
+    setSelectedChat,
+    setMessages,
+    setTypingIndicator,
+    restoreChat,
+    addMessageBase,
+    updateChatListEntry,
+    createOutgoingQuoteRequest,
+  });
+
+  const {
+    respondToQuoteRequest,
+    counterQuoteResponse,
+    rejectQuoteResponse,
+    convertQuoteResponseToDeal,
+  } = useQuoteWorkflowActions({
+    realtimeOriginId,
+    quoteRequests,
+    quoteResponses,
+    addQuoteResponse,
+    updateQuoteResponse,
+    addTradeDeal,
+    appendWorkflowMessage,
+  });
+
+  const createSharedChat = async (chatData: Parameters<typeof createNewChat>[0]) => {
+    const chat = await createNewChat(chatData);
+    if (!chat) {
+      return;
     }
-    
-    // Simulate typing indicator from other user after sending a message
-    setTimeout(() => {
-      setTypingIndicator(chatId, true);
-      
-      // Simulate a response after typing (for demo purposes)
-      if (Math.random() > 0.5) {
-        setTimeout(() => {
-          const simulatedResponses = [
-            "I'll look into this and get back to you",
-            "Thanks for the information",
-            "Let me check the details with our team",
-            "I'll prepare the documents you requested"
-          ];
-          
-          const response = simulatedResponses[Math.floor(Math.random() * simulatedResponses.length)];
-          
-          const now = new Date();
-          const hours = now.getHours();
-          const minutes = now.getMinutes().toString().padStart(2, '0');
-          const timestamp = `${hours}:${minutes} ${hours >= 12 ? 'PM' : 'AM'}`;
-          
-          const chatName = [...activeChats, ...archivedChats].find(c => c.id === chatId)?.name || "";
-          const senderName = chatName.split(" - ")[0];
-          
-          const newMessage: Message = {
-            id: `sim-${Date.now()}`,
-            content: response,
-            sender: senderName,
-            timestamp,
-            status: "delivered" as const,
-            isMine: false
-          };
-          
-          setMessages(prev => ({
-            ...prev,
-            [chatId]: [...(prev[chatId] || []), newMessage]
-          }));
-          
-          updateChatList(chatId, response, timestamp);
-          setTypingIndicator(chatId, false);
-        }, 4000); // Simulate reply after 4 seconds of typing
-      }
-    }, 2000);
+
+    realtimeBus.publish({
+      originId: realtimeOriginId,
+      type: "chat.upsert",
+      chatId: chat.id,
+      chat,
+    });
   };
 
   // Handle chat deletion with update to selected chat
@@ -136,6 +134,8 @@ export function useChatState() {
   const isSelectedChatTyping = selectedChat ? typingStatus[selectedChat.id] : false;
 
   return {
+    realtimeOriginId,
+    addIncomingRealtimeMessage,
     selectedChat,
     setSelectedChat,
     showNewChat,
@@ -144,13 +144,25 @@ export function useChatState() {
     archivedChats,
     messages,
     setMessages,
+    quoteRequests,
+    quoteRequestsByChat,
+    quoteResponses,
+    quoteResponsesByRequest,
+    tradeDeals,
+    tradeDealsByRequest,
     handleNewChat,
     handleChatSelect,
-    createNewChat,
+    createNewChat: createSharedChat,
     deleteChat: handleDeleteChat,
     archiveChat,
     restoreChat,
     addMessage,
+    addQuoteResponse,
+    addTradeDeal,
+    respondToQuoteRequest,
+    counterQuoteResponse,
+    rejectQuoteResponse,
+    convertQuoteResponseToDeal,
     isTyping: isSelectedChatTyping,
     setTypingIndicator
   };

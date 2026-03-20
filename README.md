@@ -61,12 +61,46 @@ Then access the application at `http://localhost:8080` in your browser.
 
 ## CI/CD Pipeline
 
-This repository includes a GitHub Actions workflow that:
-1. Lints the codebase
-2. Builds the application
-3. Builds a Docker image
+This repository includes one GitHub Actions workflow with one job that runs the full gate in a single pass:
+1. ESLint
+2. Production build
+3. JSCPD duplicate detection with a hard limit below 5%
+4. Semgrep architecture rules
+5. Semgrep OWASP Top 10 ruleset
+6. Playwright E2E tests
+7. Docker image build
+8. OWASP ZAP baseline scan against the built container
 
 The workflow runs automatically when code is pushed to the main branch or when a pull request is created.
+
+Generated artifacts such as `reports/`, `semgrep.sarif`, Playwright reports, build output, and Supabase temp files are intentionally ignored via `.gitignore` and uploaded by CI instead of being committed.
+
+## Local Quality Gates
+
+The repository installs a `pre-commit` hook through Husky.
+
+Hook stack:
+- Prettier on staged files via `lint-staged`
+- JSCPD with a repository cap below 5%
+- Semgrep architecture rules
+
+Playwright E2E tests run in CI only so local commits stay fast enough.
+
+Additional local prerequisite for the Semgrep hook:
+
+```sh
+npm run semgrep:setup
+```
+
+Useful commands:
+
+```sh
+npm run format:write
+npm run ci:verify
+npm run test:e2e
+npm run semgrep:owasp
+npm run docker:build:ci
+```
 
 To enable automatic pushing to a Docker registry:
 
@@ -101,6 +135,95 @@ kubectl apply -f kubernetes-manifest.yml
 ## Connecting to the Backend
 
 xChat can connect to either a custom WebSocket backend or Supabase Realtime for message distribution.
+
+### Supabase Realtime + Persistence (Recommended)
+
+The app now supports provider-based realtime and persistence with Supabase-first defaults and local fallback.
+
+1. Create your env file from the template:
+
+```sh
+cp .env.example .env.development
+```
+
+2. Fill these required values in `.env.development`:
+
+```sh
+VITE_REALTIME_CARRIER=supabase
+VITE_PERSISTENCE_PROVIDER=supabase
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<your-publishable-key>
+VITE_SUPABASE_AUTH_REDIRECT_URL=http://127.0.0.1:4173
+```
+
+Recommended file layout:
+
+```text
+.env.example        # committed template only
+.env.development    # local development values, not committed
+.env.local          # optional local override, not committed
+```
+
+Key choice:
+- Use the Supabase publishable key for this Vite frontend.
+- Do not use the Supabase secret key in this app, because any `VITE_*` value is exposed to the browser bundle.
+- `VITE_SUPABASE_ANON_KEY` is still accepted as a legacy fallback, but new setup should use `VITE_SUPABASE_PUBLISHABLE_KEY`.
+
+Commit policy:
+- Do not commit `.env`, `.env.development`, `.env.local`, or other real env files.
+- Keep only `.env.example` in the repository as the reference template.
+
+3. Authenticate and link the local workspace to your Supabase project:
+
+```sh
+npm run supabase:login
+export SUPABASE_PROJECT_REF=<your-project-ref>
+npm run supabase:link
+```
+
+4. Apply the SQL migrations:
+
+```sh
+npm run supabase:push
+```
+
+This pushes both migrations:
+
+```text
+supabase/migrations/20260320010000_xchat_realtime_persistence.sql
+supabase/migrations/20260320011000_xchat_security_hardening.sql
+```
+
+5. In Supabase Auth, enable either email/password or magic-link authentication for your users.
+
+6. Start the app:
+
+```sh
+npm run dev -- --host 127.0.0.1 --port 4173
+```
+
+7. Log in with either:
+- the existing demo credentials, which keep using local fallback storage
+- a real Supabase user, which unlocks authenticated RLS-backed Supabase persistence
+
+Security notes:
+- The hardening migration replaces the initial dev-allow-all policies with `authenticated` RLS policies scoped to `auth.uid()`.
+- Each persisted row now carries an `owner_id`, so a signed-in Supabase user can only read and mutate their own rows.
+- If Supabase auth is not active, persistence automatically falls back to local browser storage instead of failing hard.
+
+Manual fallback if you prefer SQL Editor:
+
+```sql
+-- Apply both files in order:
+-- 1) supabase/migrations/20260320010000_xchat_realtime_persistence.sql
+-- 2) supabase/migrations/20260320011000_xchat_security_hardening.sql
+```
+
+Notes:
+- If Supabase env values are missing, xChat automatically falls back to local browser-based transport/storage.
+- Realtime carrier options: `local`, `websocket`, `supabase`.
+- Persistence provider options: `local`, `supabase`.
+- Magic-link auth requires the redirect URL in your local env file, usually `.env.development`, to match the URL configured in Supabase Auth.
 
 ### Custom WebSocket Backend
 
@@ -166,6 +289,33 @@ src/
 - `npm run dev` - Start the development server
 - `npm run build` - Build the app for production
 - `npm run preview` - Preview the production build locally
+- `npm run test:e2e:install` - Install Playwright Chromium browser
+- `npm run test:e2e` - Run end-to-end tests in headless mode
+- `npm run test:e2e:headed` - Run end-to-end tests with visible browser
+- `npm run test:e2e:ui` - Open Playwright interactive test UI
+
+## End-to-End Tests
+
+The repository includes Playwright tests for RFQ and deal workflows under `e2e/`.
+
+Run once after cloning:
+
+```sh
+npm run test:e2e:install
+```
+
+Run the suite:
+
+```sh
+npm run test:e2e
+```
+
+Current scenarios cover:
+- Login and dashboard access
+- Deal history visibility for counterparty context
+- Quote submission and conversion to booked deal
+- Counter and reject quote lifecycle
+- Reload persistence for messages and quote/deal workflow state
 
 ## Technology Stack
 

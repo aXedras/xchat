@@ -1,14 +1,23 @@
 
-import { Message } from "../types/chat";
+import { logger } from "@/services/logger";
 
 // Connection status types
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
+
+export interface IncomingMessagePayload {
+  content?: string;
+  timestamp?: string;
+  isTyping?: boolean;
+  messageId?: string;
+}
+
+type EventCallback = (...args: unknown[]) => void;
 
 // Message event types for WebSocket communication
 export interface MessageEvent {
   type: 'message' | 'typing' | 'read' | 'delivered';
   chatId: string;
-  payload: any;
+  payload: IncomingMessagePayload;
 }
 
 export class MessagingService {
@@ -17,7 +26,7 @@ export class MessagingService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectTimeout: number = 1000;
-  private listeners: Map<string, Function[]> = new Map();
+  private listeners: Map<string, EventCallback[]> = new Map();
   private status: ConnectionStatus = 'disconnected';
 
   constructor(url: string) {
@@ -42,7 +51,7 @@ export class MessagingService {
           this.status = 'connected';
           this.reconnectAttempts = 0;
           this.notifyListeners('status', this.status);
-          console.log('WebSocket connection established');
+          logger.info('WebSocket connection established', { url: this.url });
           resolve();
         };
 
@@ -51,21 +60,21 @@ export class MessagingService {
             const data = JSON.parse(event.data);
             this.handleIncomingMessage(data);
           } catch (e) {
-            console.error('Error parsing message:', e);
+            logger.error('Error parsing WebSocket message', { error: e });
           }
         };
 
         this.socket.onerror = (error) => {
           this.status = 'error';
           this.notifyListeners('status', this.status);
-          console.error('WebSocket error:', error);
+          logger.error('WebSocket error', { error });
           reject(error);
         };
 
         this.socket.onclose = (event) => {
           this.status = 'disconnected';
           this.notifyListeners('status', this.status);
-          console.log('WebSocket connection closed:', event.code, event.reason);
+          logger.info('WebSocket connection closed', { code: event.code, reason: event.reason });
           
           // Attempt to reconnect if not a clean close
           if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
@@ -75,7 +84,7 @@ export class MessagingService {
       } catch (error) {
         this.status = 'error';
         this.notifyListeners('status', this.status);
-        console.error('Error establishing WebSocket connection:', error);
+        logger.error('Error establishing WebSocket connection', { error, url: this.url });
         reject(error);
       }
     });
@@ -91,11 +100,17 @@ export class MessagingService {
     this.reconnectAttempts++;
     const delay = this.reconnectTimeout * Math.pow(1.5, this.reconnectAttempts - 1);
     
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    logger.info('Attempting WebSocket reconnect', {
+      delay,
+      reconnectAttempts: this.reconnectAttempts,
+      maxReconnectAttempts: this.maxReconnectAttempts,
+    });
     
     setTimeout(() => {
       this.connect().catch(() => {
-        console.log('Reconnection attempt failed');
+        logger.warn('WebSocket reconnection attempt failed', {
+          reconnectAttempts: this.reconnectAttempts,
+        });
       });
     }, delay);
   }
@@ -122,7 +137,7 @@ export class MessagingService {
       
       this.socket.send(JSON.stringify(message));
     } else {
-      console.error('Cannot send message: WebSocket not connected');
+      logger.error('Cannot send message because the WebSocket is not connected', { chatId });
       throw new Error('WebSocket not connected');
     }
   }
@@ -173,12 +188,12 @@ export class MessagingService {
         this.notifyListeners('delivered', data.chatId, data.payload.messageId);
         break;
       default:
-        console.warn('Unknown message type:', data.type);
+        logger.warn('Unknown WebSocket message type received', { type: data.type });
     }
   }
 
   // Add event listener
-  public on(event: string, callback: Function): void {
+  public on(event: string, callback: EventCallback): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }
@@ -187,7 +202,7 @@ export class MessagingService {
   }
 
   // Remove event listener
-  public off(event: string, callback: Function): void {
+  public off(event: string, callback: EventCallback): void {
     if (this.listeners.has(event)) {
       const callbacks = this.listeners.get(event) || [];
       const index = callbacks.indexOf(callback);
@@ -199,7 +214,7 @@ export class MessagingService {
   }
 
   // Notify all listeners of an event
-  private notifyListeners(event: string, ...args: any[]): void {
+  private notifyListeners(event: string, ...args: unknown[]): void {
     if (this.listeners.has(event)) {
       const callbacks = this.listeners.get(event) || [];
       
@@ -207,7 +222,7 @@ export class MessagingService {
         try {
           callback(...args);
         } catch (e) {
-          console.error('Error in event listener:', e);
+          logger.error('Error in WebSocket event listener', { error: e, event });
         }
       });
     }

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import ChatList from "@/components/ChatList";
 import ChatWindow from "@/components/ChatWindow";
@@ -9,6 +9,7 @@ import CompanySelector from "@/components/CompanySelector";
 import { Dialog } from "@/components/ui/dialog";
 import { useChatState } from "@/hooks/useChatState";
 import { cn } from "@/lib/utils";
+import { realtimeBus } from "@/services/realtimeBus";
 
 const Dashboard = () => {
   const {
@@ -17,6 +18,11 @@ const Dashboard = () => {
     chats,
     archivedChats,
     messages,
+    quoteRequestsByChat,
+    quoteResponsesByRequest,
+    tradeDealsByRequest,
+    realtimeOriginId,
+    addIncomingRealtimeMessage,
     handleNewChat,
     handleChatSelect,
     createNewChat,
@@ -25,10 +31,26 @@ const Dashboard = () => {
     archiveChat,
     restoreChat,
     addMessage,
+    respondToQuoteRequest,
+    counterQuoteResponse,
+    rejectQuoteResponse,
+    convertQuoteResponseToDeal,
     isTyping
   } = useChatState();
 
   const [showArchived, setShowArchived] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = realtimeBus.subscribe((event) => {
+      if (event.originId === realtimeOriginId) {
+        return;
+      }
+
+      addIncomingRealtimeMessage(event);
+    });
+
+    return unsubscribe;
+  }, [addIncomingRealtimeMessage, realtimeOriginId]);
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -92,7 +114,14 @@ const Dashboard = () => {
             <ChatWindow 
               chat={selectedChat} 
               messages={messages[selectedChat.id] || []} 
+              quoteRequestsById={quoteRequestsByChat[selectedChat.id] || {}}
+              quoteResponsesByRequest={quoteResponsesByRequest}
+              tradeDealsByRequest={tradeDealsByRequest}
               onSendMessage={addMessage}
+              onRespondToQuoteRequest={respondToQuoteRequest}
+              onCounterQuoteResponse={counterQuoteResponse}
+              onRejectQuoteResponse={rejectQuoteResponse}
+              onConvertQuoteResponseToDeal={convertQuoteResponseToDeal}
               isTyping={isTyping}
             />
           ) : (

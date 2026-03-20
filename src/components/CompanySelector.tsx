@@ -20,9 +20,10 @@ interface CompanySelectorProps {
   onCreateChat: (chatData: {
     chatType: 'direct' | 'group' | 'broadcast';
     company: Company;
+    participantEmails: string[];
     selectedUsers: UserType[];
     groupName?: string;
-  }) => void;
+  }) => void | Promise<void>;
 }
 
 const CompanySelector = ({ onClose, onCreateChat }: CompanySelectorProps) => {
@@ -39,10 +40,11 @@ const CompanySelector = ({ onClose, onCreateChat }: CompanySelectorProps) => {
   const handleCreateChat = (chatData: {
     chatType: 'direct' | 'group' | 'broadcast';
     company: Company;
+    participantEmails: string[];
     selectedUsers: UserType[];
     groupName?: string;
   }) => {
-    onCreateChat(chatData);
+    void onCreateChat(chatData);
     
     const chatTypeLabel = chatData.chatType === "direct" ? "direct message" : 
                           chatData.chatType === "group" ? "group chat" : "broadcast";
@@ -88,6 +90,7 @@ const CompanySelector = ({ onClose, onCreateChat }: CompanySelectorProps) => {
               handleCreateChat({
                 chatType: "broadcast",
                 company: selectedCompany,
+                participantEmails: [],
                 selectedUsers: []
               });
             }}

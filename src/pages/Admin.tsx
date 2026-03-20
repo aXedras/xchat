@@ -3,14 +3,16 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApiKeyForm from "@/components/admin/ApiKeyForm";
 import CompanyRegistrationForm from "@/components/admin/CompanyRegistrationForm";
+import FeeRulesForm from "@/components/admin/FeeRulesForm";
 import { authService } from "@/services/authService";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("api");
   const isAuthenticated = authService.isAuthenticated();
+  const protectedTabTitle = isAuthenticated ? undefined : "API connection required";
   
-  // If not authenticated and trying to access companies tab, switch back to API tab
-  if (!isAuthenticated && activeTab === "companies") {
+  // If not authenticated and trying to access protected tabs, switch back to API tab
+  if (!isAuthenticated && ["companies", "fees"].includes(activeTab)) {
     setActiveTab("api");
   }
 
@@ -33,9 +35,16 @@ const Admin = () => {
           <TabsTrigger 
             value="companies" 
             disabled={!isAuthenticated}
-            title={!isAuthenticated ? "API connection required" : ""}
+            title={protectedTabTitle}
           >
             Company Registration
+          </TabsTrigger>
+          <TabsTrigger
+            value="fees"
+            disabled={!isAuthenticated}
+            title={protectedTabTitle}
+          >
+            Customer Fees
           </TabsTrigger>
         </TabsList>
         
@@ -53,6 +62,13 @@ const Admin = () => {
             Companies registered here will be available for chat.
           </p>
           <CompanyRegistrationForm />
+        </TabsContent>
+
+        <TabsContent value="fees" className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Maintain customer-specific fee matrices. Active rules are automatically surfaced during RFQ and deal discussions.
+          </p>
+          <FeeRulesForm />
         </TabsContent>
       </Tabs>
     </div>

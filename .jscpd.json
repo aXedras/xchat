@@ -1,0 +1,20 @@
+{
+  "threshold": 4.9,
+  "reporters": ["consoleFull", "json"],
+  "output": "reports/jscpd",
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/.github/**",
+    "**/reports/**",
+    "**/playwright-report/**",
+    "**/test-results/**"
+  ],
+  "absolute": false,
+  "minLines": 5,
+  "minTokens": 50,
+  "path": [
+    "src"
+  ]
+}

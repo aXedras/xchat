@@ -3,11 +3,12 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileTabContent from "@/components/profile/ProfileTabContent";
+import { ProfileUserData } from "@/types/profile";
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   
-  const [userData, setUserData] = useState({
+  const [userData, setUserData] = useState<ProfileUserData>({
     name: "Jane Doe",
     email: "jane.doe@example.com",
     username: "janedoe",

@@ -13,13 +13,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { authService } from "@/services/authService";
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [showSearch, setShowSearch] = useState(false);
   
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await authService.logoutApp();
     navigate("/");
   };
   
@@ -84,7 +86,7 @@ const Header = () => {
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 p-0">
+            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 p-0" aria-label="Open user menu">
               <Avatar>
                 <AvatarImage src="https://source.unsplash.com/random/40x40/?portrait" />
                 <AvatarFallback>JD</AvatarFallback>
@@ -98,7 +100,7 @@ const Header = () => {
               <User className="h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2" onClick={handleLogout}>
+            <DropdownMenuItem className="gap-2" onClick={() => void handleLogout()}>
               <LogOut className="h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>

@@ -4,13 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Mail } from "lucide-react";
+import { toast } from "sonner";
 
 interface LoginFormProps {
-  onLogin: (email: string, password: string) => void;
+  onLogin: (email: string, password: string) => void | Promise<void>;
+  onSendMagicLink: (email: string) => Promise<void>;
+  canUseMagicLink: boolean;
   isLoading: boolean;
 }
 
-const LoginForm = ({ onLogin, isLoading }: LoginFormProps) => {
+const LoginForm = ({ onLogin, onSendMagicLink, canUseMagicLink, isLoading }: LoginFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showMagicLinkInput, setShowMagicLinkInput] = useState(false);
@@ -26,16 +29,23 @@ const LoginForm = ({ onLogin, isLoading }: LoginFormProps) => {
   const handleMagicLinkSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSendingMagicLink(true);
-    
-    // Simulate sending a magic link
-    setTimeout(() => {
-      setSendingMagicLink(false);
-      setMagicLinkSent(true);
-    }, 1500);
+
+    void onSendMagicLink(magicLinkEmail)
+      .then(() => {
+        setMagicLinkSent(true);
+      })
+      .catch((error) => {
+        setMagicLinkSent(false);
+        toast.error(error instanceof Error ? error.message : "Unable to send magic link");
+      })
+      .finally(() => {
+        setSendingMagicLink(false);
+      });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -89,12 +99,20 @@ const LoginForm = ({ onLogin, isLoading }: LoginFormProps) => {
           type="button" 
           variant="outline" 
           className="w-full transition-all duration-200"
+          disabled={!canUseMagicLink}
           onClick={() => setShowMagicLinkInput(!showMagicLinkInput)}
         >
           <Mail className="mr-2 h-4 w-4" />
           Sign in with Magic Link
         </Button>
       </div>
+      </form>
+
+      {!canUseMagicLink && (
+        <p className="text-xs text-muted-foreground text-center">
+          Magic link login requires Supabase URL and a publishable key in the environment.
+        </p>
+      )}
       
       {showMagicLinkInput && (
         <div className="mt-4 p-4 border border-input rounded-lg bg-muted/50">
@@ -152,7 +170,7 @@ const LoginForm = ({ onLogin, isLoading }: LoginFormProps) => {
           )}
         </div>
       )}
-    </form>
+    </div>
   );
 };
 

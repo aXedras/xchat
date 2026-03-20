@@ -1,5 +1,9 @@
 
-name: Build, Lint and Docker
+name: CI Quality And Security
+
+permissions:
+  contents: read
+  security-events: write
 
 on:
   push:
@@ -8,76 +12,85 @@ on:
     branches: [ main ]
 
 jobs:
-  lint-and-build:
+  ci:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
-      
+      uses: actions/checkout@v4
+
     - name: Setup Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
-        
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Install dependencies
       run: npm ci
-      
-    - name: Run lint
-      run: npm run lint
-      
-    - name: Build application
-      run: npm run build
-      
-  docker-build:
-    needs: lint-and-build
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-      
-    - name: Build Docker image
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        push: false
-        tags: xchat:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        build-args: |
-          VITE_WS_URL=${{ secrets.VITE_WS_URL || 'ws://api.example.com/ws' }}
 
-  # Uncomment the following job if you want to push to a registry
-  # push:
-  #   needs: docker-build
-  #   if: github.event_name != 'pull_request'
-  #   runs-on: ubuntu-latest
-  #   
-  #   steps:
-  #   - name: Checkout code
-  #     uses: actions/checkout@v3
-  #     
-  #   - name: Set up Docker Buildx
-  #     uses: docker/setup-buildx-action@v2
-  #     
-  #   - name: Login to DockerHub
-  #     uses: docker/login-action@v2
-  #     with:
-  #       username: ${{ secrets.DOCKERHUB_USERNAME }}
-  #       password: ${{ secrets.DOCKERHUB_TOKEN }}
-  #       
-  #   - name: Build and push
-  #     uses: docker/build-push-action@v4
-  #     with:
-  #       context: .
-  #       push: true
-  #       tags: yourusername/xchat:latest
-  #       cache-from: type=gha
-  #       cache-to: type=gha,mode=max
-  #       build-args: |
-  #         VITE_WS_URL=${{ secrets.VITE_WS_URL || 'ws://api.example.com/ws' }}
+    - name: Install Semgrep
+      run: python3 -m pip install --upgrade pip semgrep
+
+    - name: Run lint, build, duplication and architecture checks
+      run: npm run ci:verify
+
+    - name: Run Semgrep with OWASP Top 10 and architecture rules
+      run: npm run semgrep:ci
+
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps chromium
+
+    - name: Run E2E tests
+      run: npm run test:e2e
+
+    - name: Build Docker image
+      run: npm run docker:build:ci
+
+    - name: Start container for OWASP scan
+      run: docker run -d --rm --name xchat-ci -p 8080:80 xchat:ci
+
+    - name: Wait for application
+      run: |
+        for attempt in {1..20}; do
+          if curl --fail --silent http://127.0.0.1:8080 > /dev/null; then
+            exit 0
+          fi
+          sleep 3
+        done
+        echo "Application did not become ready in time" >&2
+        exit 1
+
+    - name: Run OWASP ZAP baseline scan
+      run: |
+        mkdir -p reports/zap
+        docker run --rm --network host -v "$PWD/reports/zap:/zap/wrk/:rw" ghcr.io/zaproxy/zaproxy:stable \
+          zap-baseline.py -t http://127.0.0.1:8080 -m 3 -r zap-report.html -J zap-report.json
+
+    - name: Stop container
+      if: always()
+      run: docker stop xchat-ci || true
+
+    - name: Upload Semgrep SARIF
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: semgrep.sarif
+
+    - name: Upload quality, E2E and ZAP reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: quality-security-and-e2e-reports
+        path: |
+          reports/zap
+          playwright-report
+          test-results
+        if-no-files-found: ignore

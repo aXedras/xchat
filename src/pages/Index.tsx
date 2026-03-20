@@ -1,34 +1,65 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import LoginForm from "@/components/LoginForm";
+import config from "@/config/environment";
+import { authService } from "@/services/authService";
+import { logger } from "@/services/logger";
 import { toast } from "sonner";
 
 const Index = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const maybeResumeSession = async () => {
+      if (!authService.isSupabaseAuthConfigured()) {
+        if (authService.isAppAuthenticated() && !isCancelled) {
+          navigate("/dashboard", { replace: true });
+        }
+        return;
+      }
+
+      try {
+        const identity = await authService.restoreAppSession();
+        if (identity && !isCancelled) {
+          navigate("/dashboard", { replace: true });
+        }
+      } catch (error) {
+        logger.error("Session restore failed", { error });
+      }
+    };
+
+    void maybeResumeSession();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [navigate]);
 
   const handleLogin = async (email: string, password: string) => {
     setIsLoading(true);
-    
-    // Simulate API call
+
     try {
-      // In a real app, this would be an actual API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Basic validation - in a real app this would be handled by the backend
-      if (email === "demo@axedras.com" && password === "password") {
-        toast.success("Login successful");
-        navigate("/dashboard");
-      } else {
-        toast.error("Invalid credentials");
-      }
+      await authService.loginToApp(email, password);
+      toast.success("Login successful");
+      const targetPath = typeof location.state === "object" && location.state && "from" in location.state
+        ? location.state.from?.pathname
+        : undefined;
+      navigate(targetPath || "/dashboard");
     } catch (error) {
-      toast.error("An error occurred during login");
-      console.error("Login error:", error);
+      toast.error(error instanceof Error ? error.message : "An error occurred during login");
+      logger.error("Login failed", { error, email });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleMagicLink = async (email: string) => {
+    await authService.sendMagicLink(email);
   };
 
   return (
@@ -46,12 +77,24 @@ const Index = () => {
           </p>
         </div>
         
-        <LoginForm onLogin={handleLogin} isLoading={isLoading} />
+        <LoginForm
+          onLogin={handleLogin}
+          onSendMagicLink={handleMagicLink}
+          canUseMagicLink={authService.isSupabaseAuthConfigured()}
+          isLoading={isLoading}
+        />
         
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>Demo credentials</p>
-          <p className="mt-1"><span className="font-medium">Email:</span> demo@axedras.com</p>
-          <p><span className="font-medium">Password:</span> password</p>
+          {config.demo.email && config.demo.password && (
+            <>
+              <p>Demo credentials</p>
+              <p className="mt-1"><span className="font-medium">Email:</span> {config.demo.email}</p>
+              <p><span className="font-medium">Password:</span> {config.demo.password}</p>
+            </>
+          )}
+          {authService.isSupabaseAuthConfigured() && (
+            <p className="mt-3">Supabase login and magic link are enabled for this environment.</p>
+          )}
         </div>
       </div>
       

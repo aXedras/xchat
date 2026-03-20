@@ -26,9 +26,14 @@ import {
 
 const macros = [
   {
-    macro: "ASK [qty]x[weight][unit] [metal] [quality] [location] [date] +[premium]",
-    example: "ASK 10x1KG AU LBMA good delivery LND fixing 18.03 +0.3",
-    description: "Requesting a price quote to buy precious metals (buy-side inquiry)"
+    macro: "ASK [qty]x[weight][unit] [metal] [quality] [location] [date/fixing] +[premium] | TTL: ... | FEE: ... | VAT: ... | NOTE: ...",
+    example: "ASK 10x1KG AU LBMA good delivery LND fixing 18.03 +0.3 | TTL: 10m",
+    description: "General buy-side inquiry asking a counterparty to quote. TTL is optional when the request can stay open-ended."
+  },
+  {
+    macro: "RFQ [qty]x[weight][unit] [metal] [quality] [location] [date/fixing] +[premium] | TTL: ... | FEE: ... | VAT: ...",
+    example: "RFQ 10x1KG AU LBMA good delivery LND fixing 18.03 +0.3 | TTL: 10m | FEE: 25 bps | VAT: exempt",
+    description: "Formal request-for-quotation. Same payload as ASK, but usually used when a clear response window and commercial discipline are required."
   },
   {
     macro: "BID [qty]x[weight][unit] [metal] [quality] [location] [date] +[premium]",
@@ -74,7 +79,13 @@ const MacroHelp = () => {
         </DialogHeader>
         
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-sm">
-          <strong>Trading Terminology:</strong> In precious metals trading, <span className="font-semibold">BID</span> represents buying interest, while <span className="font-semibold">OFFER</span> represents selling interest. <span className="font-semibold">ASK</span> is used for requesting quotes when looking to buy.
+          <strong>Trading Terminology:</strong> In precious metals trading, <span className="font-semibold">BID</span> represents buying interest, while <span className="font-semibold">OFFER</span> represents selling interest. <span className="font-semibold">ASK</span> and <span className="font-semibold">RFQ</span> both represent quote requests on the buy side, with RFQ as the more explicit commercial wording.
+        </div>
+
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-900 text-sm space-y-1">
+          <p><strong>ASK vs RFQ:</strong> ASK is the looser trader shorthand for "please quote me". RFQ is the formal request-for-quotation variant and should be preferred when the request is time-bound or operationally sensitive.</p>
+          <p><strong>TTL:</strong> Use <span className="font-mono">TTL: 10m</span>, <span className="font-mono">TTL: 30s</span> or <span className="font-mono">TTL: 1h</span> to tell the recipient how long they have to respond before the request expires.</p>
+          <p><strong>Status handling:</strong> Once the TTL elapses, the quote request moves to <span className="font-semibold">Expired</span>. Expired requests should not be answered as if still active; they need a refresh or a new RFQ/ASK.</p>
         </div>
         
         <Table>
