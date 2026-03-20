@@ -2,6 +2,7 @@
 name: CI Quality And Security
 
 permissions:
+  actions: read
   contents: read
   security-events: write
 
@@ -55,12 +56,15 @@ jobs:
       run: npm run docker:build:ci
 
     - name: Start container for OWASP scan
-      run: docker run -d --rm --name xchat-ci -p 8080:80 xchat:ci
+      run: |
+        docker run -d --rm --name xchat-ci -p 127.0.0.1::8080 xchat:ci
+        host_port=$(docker port xchat-ci 8080/tcp | sed 's/.*://')
+        echo "XCHAT_HOST_PORT=$host_port" >> "$GITHUB_ENV"
 
     - name: Wait for application
       run: |
         for attempt in {1..20}; do
-          if curl --fail --silent http://127.0.0.1:8080 > /dev/null; then
+          if curl --fail --silent "http://127.0.0.1:$XCHAT_HOST_PORT" > /dev/null; then
             exit 0
           fi
           sleep 3
@@ -72,20 +76,20 @@ jobs:
       run: |
         mkdir -p reports/zap
         docker run --rm --network host -v "$PWD/reports/zap:/zap/wrk/:rw" ghcr.io/zaproxy/zaproxy:stable \
-          zap-baseline.py -t http://127.0.0.1:8080 -m 3 -r zap-report.html -J zap-report.json
+          zap-baseline.py -t "http://127.0.0.1:$XCHAT_HOST_PORT" -m 3 -r zap-report.html -J zap-report.json
 
     - name: Stop container
       if: always()
       run: docker stop xchat-ci || true
 
     - name: Upload Semgrep SARIF
-      if: always()
-      uses: github/codeql-action/upload-sarif@v3
+      if: always() && github.actor != 'nektos/act' && hashFiles('semgrep.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: semgrep.sarif
 
     - name: Upload quality, E2E and ZAP reports
-      if: always()
+      if: always() && github.actor != 'nektos/act'
       uses: actions/upload-artifact@v4
       with:
         name: quality-security-and-e2e-reports
