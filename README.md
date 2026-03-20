@@ -54,7 +54,7 @@ docker build -t xchat:latest .
 To run the container locally:
 
 ```sh
-docker run -p 8080:80 xchat:latest
+docker run -p 8080:8080 xchat:latest
 ```
 
 Then access the application at `http://localhost:8080` in your browser.
@@ -236,7 +236,7 @@ To connect to a custom WebSocket backend:
 VITE_WS_URL=ws://your-backend-url/ws npm run dev
 
 # For Docker
-docker run -p 8080:80 -e VITE_WS_URL=ws://your-backend-url/ws xchat:latest
+docker run -p 8080:8080 -e VITE_WS_URL=ws://your-backend-url/ws xchat:latest
 ```
 
 2. The frontend will automatically attempt to connect to the specified WebSocket endpoint.

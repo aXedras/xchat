@@ -1,6 +1,6 @@
 
 # Base image
-FROM node:20-alpine as builder
+FROM node:20-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -18,7 +18,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine
+FROM nginxinc/nginx-unprivileged:stable-alpine
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
@@ -27,7 +27,10 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port
-EXPOSE 80
+EXPOSE 8080
+
+# Run nginx as a non-root user.
+USER 101
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
