@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Paperclip, Send, Smile } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { isQuoteRequestMacro, parseAskMacro } from "@/utils/askMacro";
 
 interface MessageInputProps {
   chatId: string;
@@ -40,8 +41,7 @@ const MessageInput = ({ chatId, onSendMessage }: MessageInputProps) => {
   };
   
   const checkForMacros = (text: string) => {
-    // More comprehensive macro detection
-    if (text.startsWith("ASK ") || 
+    if (isQuoteRequestMacro(text) ||
         text.startsWith("BID ") || 
         text.startsWith("OFFER ") ||
         text.includes("Airwaybill") ||
@@ -53,13 +53,16 @@ const MessageInput = ({ chatId, onSendMessage }: MessageInputProps) => {
   };
   
   const hasMacro = checkForMacros(message);
+  const quoteRequest = parseAskMacro(message);
 
   return (
     <div className="p-4 border-t border-border">
       {hasMacro && (
         <div className="mb-2 p-2 bg-amber-50 text-amber-700 rounded-md text-sm flex items-center">
           <span className="font-medium mr-1">Macro detected:</span> 
-          Your message appears to contain industry-specific shorthand
+          {quoteRequest
+            ? `${quoteRequest.macroType} quote request for ${quoteRequest.quantity} ${quoteRequest.product} will be expanded for the recipient`
+            : "Your message appears to contain industry-specific shorthand"}
         </div>
       )}
       

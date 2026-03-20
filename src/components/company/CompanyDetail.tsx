@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Building, Users, UserPlus } from "lucide-react";
+import { Building, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import UserSelector from "@/components/UserSelector";
@@ -21,15 +21,28 @@ interface CompanyDetailProps {
   onCreateChat: (chatData: {
     chatType: 'direct' | 'group' | 'broadcast';
     company: Company;
+    participantEmails: string[];
     selectedUsers: User[];
     groupName?: string;
-  }) => void;
+  }) => void | Promise<void>;
 }
+
+type ChatType = "direct" | "group" | "broadcast";
 
 const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) => {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [chatType, setChatType] = useState<"direct" | "group" | "broadcast">("direct");
+  const [chatType, setChatType] = useState<ChatType>("direct");
   const [groupName, setGroupName] = useState("");
+  const [participantEmails, setParticipantEmails] = useState("");
+
+  const parseParticipantEmails = () => {
+    return Array.from(new Set(
+      participantEmails
+        .split(/[\s,;]+/)
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean),
+    ));
+  };
   
   const handleUserToggle = (userId: string) => {
     setSelectedUsers(prev => {
@@ -52,6 +65,7 @@ const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) =>
     onCreateChat({
       chatType,
       company,
+      participantEmails: parseParticipantEmails(),
       selectedUsers: selectedUserObjects,
       groupName: chatType === "group" ? groupName : undefined
     });
@@ -81,7 +95,7 @@ const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) =>
         </Button>
       </div>
       
-      <Tabs defaultValue="direct" onValueChange={(v) => setChatType(v as any)}>
+      <Tabs defaultValue="direct" onValueChange={(value) => setChatType(value as ChatType)}>
         <TabsList className="grid grid-cols-3 mb-4">
           <TabsTrigger value="direct">Direct Message</TabsTrigger>
           <TabsTrigger value="group">Group Chat</TabsTrigger>
@@ -92,6 +106,16 @@ const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) =>
           <p className="text-sm text-muted-foreground mb-4">
             Select a single user to start a direct conversation
           </p>
+
+          <div className="mb-4">
+            <label htmlFor="direct-participant-emails" className="text-sm font-medium mb-1 block">Recipient email</label>
+            <Input
+              id="direct-participant-emails"
+              placeholder="counterparty@company.com"
+              value={participantEmails}
+              onChange={(event) => setParticipantEmails(event.target.value)}
+            />
+          </div>
           
           <UserSelector
             users={company.users}
@@ -114,6 +138,16 @@ const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) =>
           <p className="text-sm text-muted-foreground mb-4">
             Select multiple users to create a group
           </p>
+
+          <div className="mb-4">
+            <label htmlFor="group-participant-emails" className="text-sm font-medium mb-1 block">Participant emails</label>
+            <Input
+              id="group-participant-emails"
+              placeholder="alice@company.com, bob@company.com"
+              value={participantEmails}
+              onChange={(event) => setParticipantEmails(event.target.value)}
+            />
+          </div>
           
           <UserSelector
             users={company.users}
@@ -149,6 +183,16 @@ const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) =>
           <p className="text-sm text-muted-foreground mb-4">
             Send a message to everyone at {company.name}
           </p>
+
+          <div className="mb-4">
+            <label htmlFor="broadcast-participant-emails" className="text-sm font-medium mb-1 block">Broadcast recipients</label>
+            <Input
+              id="broadcast-participant-emails"
+              placeholder="team@company.com, desk@company.com"
+              value={participantEmails}
+              onChange={(event) => setParticipantEmails(event.target.value)}
+            />
+          </div>
           
           <div className="p-6 border border-border rounded-lg bg-accent/20 text-center">
             <Building className="h-8 w-8 text-primary mx-auto mb-3" />

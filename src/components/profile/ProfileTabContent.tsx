@@ -4,16 +4,11 @@ import { SecurityForm } from "./SecurityForm";
 import { NotificationsForm } from "./NotificationsForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Shield, Bell } from "lucide-react";
+import { ProfileUserData } from "@/types/profile";
 
 interface ProfileTabContentProps {
-  userData: {
-    name: string;
-    email: string;
-    username: string;
-    role: string;
-    avatarUrl: string;
-  };
-  setUserData: (data: any) => void;
+  userData: ProfileUserData;
+  setUserData: React.Dispatch<React.SetStateAction<ProfileUserData>>;
   isEditing: boolean;
   setIsEditing: (isEditing: boolean) => void;
 }

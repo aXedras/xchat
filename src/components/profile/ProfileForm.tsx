@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ProfileUserData } from "@/types/profile";
 
 const profileFormSchema = z.object({
   username: z.string().min(2, {
@@ -23,14 +24,8 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 interface ProfileFormProps {
-  userData: {
-    name: string;
-    email: string;
-    username: string;
-    role: string;
-    avatarUrl: string;
-  };
-  setUserData: (data: any) => void;
+  userData: ProfileUserData;
+  setUserData: React.Dispatch<React.SetStateAction<ProfileUserData>>;
   isEditing: boolean;
   setIsEditing: (isEditing: boolean) => void;
 }

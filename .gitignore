@@ -10,13 +10,26 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+coverage
 *.local
+.env
+.env.*
+!.env.example
+reports
+semgrep.sarif
+.semgrep-cache
+supabase/.temp
+.venv
+playwright-report
+test-results
+blob-report
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+.eslintcache
 *.suo
 *.ntvs*
 *.njsproj

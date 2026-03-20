@@ -1,0 +1,10 @@
+dist
+dist-ssr
+node_modules
+coverage
+reports
+playwright-report
+test-results
+blob-report
+semgrep.sarif
+supabase/.temp

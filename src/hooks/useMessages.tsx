@@ -2,28 +2,42 @@
 import { useState, useCallback, useEffect } from "react";
 import { Message } from "../types/chat";
 import { initialMessages } from "../data/mockChats";
+import { authService } from "@/services/authService";
+import { getCurrentParticipant } from "@/services/chatIdentity";
+import { isAskMacro } from "@/utils/askMacro";
+import { formatChatTimestamp } from "@/utils/format";
 
 export function useMessages() {
   const [messages, setMessages] = useState<Record<string, Message[]>>(initialMessages);
   const [typingStatus, setTypingStatus] = useState<Record<string, boolean>>({});
   
-  const addMessage = (chatId: string, content: string, isArchived: boolean, restoreChat?: (chatId: string) => void, updateChatList?: (chatId: string, content: string, timestamp: string) => void) => {
+  const addMessage = (
+    chatId: string,
+    content: string,
+    isArchived: boolean,
+    restoreChat?: (chatId: string) => void,
+    updateChatList?: (chatId: string, content: string, timestamp: string) => void,
+    messageOverrides?: Partial<Message>,
+  ) => {
     if (isArchived && restoreChat) {
       restoreChat(chatId);
     }
     
     const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    const timestamp = `${hours}:${minutes} ${hours >= 12 ? 'PM' : 'AM'}`;
+    const timestamp = formatChatTimestamp(now);
+    const participant = getCurrentParticipant();
     
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
       content: content,
-      sender: "You",
+      sender: participant?.displayName ?? "You",
+      senderEmail: participant?.email,
       timestamp: timestamp,
+      createdAt: now.toISOString(),
       status: "sent" as const,
-      isMine: true
+      isMine: true,
+      isMacro: isAskMacro(content),
+      ...messageOverrides,
     };
     
     setMessages(prev => ({
@@ -80,6 +94,10 @@ export function useMessages() {
   
   // Generate random typing indicators for demo purposes
   useEffect(() => {
+    if (authService.getAppIdentity()?.mode !== "demo") {
+      return;
+    }
+
     const interval = setInterval(() => {
       const keys = Object.keys(messages);
       if (keys.length > 0) {

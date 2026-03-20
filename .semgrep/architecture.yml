@@ -1,0 +1,37 @@
+rules:
+  - id: xchat-ui-primitives-must-stay-generic
+    message: UI primitives under src/components/ui must stay app-agnostic and must not import pages, hooks, services, config, data, or non-ui components.
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include:
+        - '**/src/components/ui/**/*.ts'
+        - '**/src/components/ui/**/*.tsx'
+      exclude:
+        - '**/src/components/ui/sidebar.tsx'
+        - '**/src/components/ui/toaster.tsx'
+        - '**/src/components/ui/use-toast.ts'
+    pattern-regex: 'from ["\'']@/(pages|hooks|services|config|data|components/(?!ui/)).*["\'']'
+
+  - id: xchat-components-must-not-import-infra-directly
+    message: Feature components must not import persistence, realtime, or Supabase infrastructure directly. Route these dependencies through hooks or higher-level services.
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include:
+        - '**/src/components/**/*.ts'
+        - '**/src/components/**/*.tsx'
+      exclude:
+        - '**/src/components/ui/**/*.ts'
+        - '**/src/components/ui/**/*.tsx'
+    pattern-regex: 'from ["\'']@/services/(persistence|realtime|supabase)(/|["\''])'
+
+  - id: xchat-pages-must-not-import-supabase-client-directly
+    message: Pages must not talk to the Supabase client directly. Use authService, hooks, or repository abstractions instead.
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include:
+        - '**/src/pages/**/*.ts'
+        - '**/src/pages/**/*.tsx'
+    pattern-regex: 'from ["\'']@/services/supabase/.*["\'']'

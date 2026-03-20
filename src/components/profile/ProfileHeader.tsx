@@ -6,16 +6,11 @@ import { Edit, Upload } from "lucide-react";
 import { getInitials } from "@/utils/format";
 import { fileToBase64, validateImageFile } from "@/utils/fileUtils";
 import { toast } from "sonner";
+import { ProfileUserData } from "@/types/profile";
 
 interface ProfileHeaderProps {
-  userData: {
-    name: string;
-    email: string;
-    username: string;
-    role: string;
-    avatarUrl: string;
-  };
-  setUserData: (data: any) => void;
+  userData: ProfileUserData;
+  setUserData: React.Dispatch<React.SetStateAction<ProfileUserData>>;
   isEditing: boolean;
   setIsEditing: (isEditing: boolean) => void;
 }

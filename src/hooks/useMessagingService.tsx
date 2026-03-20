@@ -1,12 +1,11 @@
 
 import { useState, useEffect, useCallback } from "react";
-import { ConnectionStatus, getMessagingService, MessageEvent } from "../services/messagingService";
-import { Message } from "../types/chat";
+import { ConnectionStatus, getMessagingService, IncomingMessagePayload } from "../services/messagingService";
 import { toast } from "sonner";
 
 interface UseMessagingServiceProps {
   chatId?: string;
-  onMessage?: (chatId: string, message: any) => void;
+  onMessage?: (chatId: string, message: IncomingMessagePayload) => void;
   onTyping?: (chatId: string, isTyping: boolean) => void;
   onStatusChange?: (status: ConnectionStatus) => void;
 }
@@ -101,7 +100,7 @@ export function useMessagingService({
     };
 
     // Message listener
-    const handleMessage = (receivedChatId: string, message: any) => {
+    const handleMessage = (receivedChatId: string, message: IncomingMessagePayload) => {
       if (chatId && receivedChatId !== chatId) return;
       
       if (onMessage) {
