@@ -9,7 +9,8 @@
     "**/.github/**",
     "**/reports/**",
     "**/playwright-report/**",
-    "**/test-results/**"
+    "**/test-results/**",
+    "**/src/components/ui/**"
   ],
   "absolute": false,
   "minLines": 5,

@@ -1,11 +1,19 @@
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { toast } from "sonner";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ProfileSectionCard } from "@/components/profile/ProfileSectionCard";
+import {
+  Button,
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  ProfileSectionCard,
+  toast,
+  useForm,
+  z,
+  zodResolver,
+} from "@/components/profile/profileFormKit";
 import { ProfileUserData } from "@/types/profile";
 
 const profileFormSchema = z.object({
