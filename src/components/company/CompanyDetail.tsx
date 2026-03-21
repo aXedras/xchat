@@ -1,13 +1,12 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Building, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import UserSelector from "@/components/UserSelector";
+import { CompanyIdentity } from "@/components/company/CompanyIdentity";
 import { Company, User } from "@/types/chat";
-import { getInitials } from "@/utils/format";
 import {
   Tabs,
   TabsContent,
@@ -74,21 +73,7 @@ const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) =>
   return (
     <div className="flex-1 overflow-hidden flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 bg-muted">
-            <Building className="h-5 w-5 text-muted-foreground" />
-            <AvatarFallback>{getInitials(company.name)}</AvatarFallback>
-          </Avatar>
-          
-          <div>
-            <h3 className="font-medium">{company.name}</h3>
-            <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-              <span>{company.location}</span>
-              <span>•</span>
-              <span>{company.type}</span>
-            </div>
-          </div>
-        </div>
+        <CompanyIdentity company={company} />
         
         <Button variant="outline" onClick={onBack}>
           Change Company

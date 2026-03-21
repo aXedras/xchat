@@ -3,10 +3,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ProfileSectionCard } from "@/components/profile/ProfileSectionCard";
+import { logger } from "@/services/logger";
 
 const securityFormSchema = z.object({
   currentPassword: z.string().min(8, {
@@ -36,7 +37,7 @@ export const SecurityForm = () => {
   });
 
   const onSecuritySubmit = (data: SecurityFormValues) => {
-    console.log("Password updated:", data);
+    logger.info("Password updated", { hasCurrentPassword: Boolean(data.currentPassword) });
     securityForm.reset({
       currentPassword: "",
       newPassword: "",
@@ -46,14 +47,10 @@ export const SecurityForm = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Security Settings</CardTitle>
-        <CardDescription>
-          Manage your password and security settings.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <ProfileSectionCard
+      title="Security Settings"
+      description="Manage your password and security settings."
+    >
         <Form {...securityForm}>
           <form onSubmit={securityForm.handleSubmit(onSecuritySubmit)} className="space-y-6">
             <FormField
@@ -116,7 +113,6 @@ export const SecurityForm = () => {
             <Button type="submit">Update Password</Button>
           </form>
         </Form>
-      </CardContent>
-    </Card>
+    </ProfileSectionCard>
   );
 };

@@ -36,6 +36,22 @@ export interface Message {
   isMacro?: boolean;
 }
 
+export type UpdateChatListEntry = (
+  chatId: string,
+  content: string,
+  timestamp: string,
+  createdAt?: string,
+) => void;
+
+export type AddMessageBase = (
+  chatId: string,
+  content: string,
+  isArchived: boolean,
+  restoreChat?: (chatId: string) => void,
+  updateChatList?: UpdateChatListEntry,
+  messageOverrides?: Partial<Message>,
+) => void;
+
 export type ProductClass = "gold" | "silver" | "platinum" | "palladium" | "other";
 export type FeeRuleType = "percent" | "bps" | "fixed";
 export type QuoteRequestType = "ASK" | "RFQ";

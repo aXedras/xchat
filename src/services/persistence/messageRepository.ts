@@ -4,6 +4,7 @@ import { getCurrentParticipant, isCurrentParticipantEmail } from "@/services/cha
 import { logger } from "@/services/logger";
 import { getSupabaseBrowserClient, hasSupabaseConfig } from "@/services/supabase/client";
 import { Message } from "@/types/chat";
+import { sortMessagesChronologically } from "@/utils/messageUtils";
 
 const LOCAL_STORAGE_KEY = "xchat.messages.v1";
 
@@ -20,11 +21,7 @@ function dedupeMessages(messages: Message[]) {
     byId.set(message.id, message);
   });
 
-  return Array.from(byId.values()).sort((left, right) => {
-    const leftTime = left.createdAt ?? left.timestamp;
-    const rightTime = right.createdAt ?? right.timestamp;
-    return leftTime.localeCompare(rightTime);
-  });
+  return sortMessagesChronologically(Array.from(byId.values()));
 }
 
 function withViewerPerspective(message: Message) {
@@ -86,7 +83,7 @@ class SupabaseMessageRepository implements MessageRepository {
   private readonly client: SupabaseClient;
 
   constructor(private readonly fallback: MessageRepository) {
-    this.client = getSupabaseBrowserClient() as SupabaseClient;
+    this.client = getSupabaseBrowserClient();
   }
 
   async saveMessage(chatId: string, message: Message) {
