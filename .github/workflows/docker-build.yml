@@ -76,14 +76,41 @@ jobs:
           mkdir -p reports/zap
           chmod 777 reports/zap
           docker run --rm --network host -v "$PWD/reports/zap:/zap/wrk/:rw" ghcr.io/zaproxy/zaproxy:stable \
-            zap-baseline.py -t "http://127.0.0.1:$XCHAT_HOST_PORT" -m 3 -r zap-report.html -J zap-report.json
+            zap-baseline.py -I -t "http://127.0.0.1:$XCHAT_HOST_PORT" -m 3 -r zap-report.html -J zap-report.json
 
       - name: Stop container
         if: always()
         run: docker stop xchat-ci || true
 
-      - name: Upload Semgrep SARIF
+      - name: Detect GitHub code scanning availability
+        id: code-scanning
         if: always() && github.actor != 'nektos/act' && hashFiles('semgrep.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const { data: repo } = await github.rest.repos.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+
+              const security = repo.security_and_analysis ?? {};
+              const enabled = Object.values(security).some(
+                (feature) => feature && typeof feature === 'object' && feature.status === 'enabled',
+              );
+
+              core.setOutput('enabled', enabled ? 'true' : 'false');
+
+              if (!enabled) {
+                core.notice('Skipping SARIF upload because code scanning is not enabled for this repository.');
+              }
+            } catch (error) {
+              core.warning(`Unable to determine code scanning status: ${error.message}`);
+              core.setOutput('enabled', 'false');
+            }
+
+      - name: Upload Semgrep SARIF
+        if: always() && steps.code-scanning.outputs.enabled == 'true'
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@v4
         with:
