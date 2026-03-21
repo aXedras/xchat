@@ -1,10 +1,9 @@
 
 import { useState } from "react";
-import { Search, Building, User } from "lucide-react";
+import { Search, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { CompanyIdentity } from "@/components/company/CompanyIdentity";
 import { Company } from "@/types/chat";
-import { getInitials } from "@/utils/format";
 
 interface CompanyListProps {
   companies: Company[];
@@ -45,21 +44,7 @@ const CompanyList = ({ companies, onSelectCompany }: CompanyListProps) => {
                 className="border border-border rounded-lg p-4 hover:border-primary/50 hover:bg-accent/30 transition-colors cursor-pointer"
                 onClick={() => onSelectCompany(company)}
               >
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 bg-muted">
-                    <Building className="h-5 w-5 text-muted-foreground" />
-                    <AvatarFallback>{getInitials(company.name)}</AvatarFallback>
-                  </Avatar>
-                  
-                  <div>
-                    <h3 className="font-medium">{company.name}</h3>
-                    <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                      <span>{company.location}</span>
-                      <span>•</span>
-                      <span>{company.type}</span>
-                    </div>
-                  </div>
-                </div>
+                <CompanyIdentity company={company} />
                 
                 <div className="mt-3 flex items-center gap-1">
                   <User className="h-4 w-4 text-muted-foreground" />

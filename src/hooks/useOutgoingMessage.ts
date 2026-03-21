@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction } from "react";
-import { Chat, Message, QuoteRequest } from "@/types/chat";
+import { AddMessageBase, Chat, Message, QuoteRequest, UpdateChatListEntry } from "@/types/chat";
 import { authService } from "@/services/authService";
 import { getCurrentParticipant } from "@/services/chatIdentity";
 import { formatChatTimestamp } from "@/utils/format";
@@ -15,15 +15,8 @@ interface UseOutgoingMessageParams {
   setMessages: Dispatch<SetStateAction<Record<string, Message[]>>>;
   setTypingIndicator: (chatId: string, isTyping: boolean) => void;
   restoreChat: (chatId: string) => void;
-  addMessageBase: (
-    chatId: string,
-    content: string,
-    isArchived: boolean,
-    restoreChat?: (chatId: string) => void,
-    updateChatList?: (chatId: string, content: string, timestamp: string, createdAt?: string) => void,
-    messageOverrides?: Partial<Message>,
-  ) => void;
-  updateChatListEntry: (chatId: string, content: string, timestamp: string, createdAt?: string) => void;
+  addMessageBase: AddMessageBase;
+  updateChatListEntry: UpdateChatListEntry;
   createOutgoingQuoteRequest: (input: {
     chatId: string;
     counterpartyName: string;

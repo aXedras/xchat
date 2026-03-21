@@ -1,10 +1,31 @@
 import { Dispatch, SetStateAction, useEffect } from "react";
-import { Chat, Message, QuoteRequest, QuoteResponse, TradeDeal } from "@/types/chat";
+import { AddMessageBase, Chat, Message, QuoteRequest, QuoteResponse, TradeDeal, UpdateChatListEntry } from "@/types/chat";
 import { getCurrentParticipant } from "@/services/chatIdentity";
 import { formatChatTimestamp } from "@/utils/format";
+import { sortMessagesChronologically } from "@/utils/messageUtils";
 import { RealtimeEvent } from "@/services/realtimeBus";
 import { chatConversationRepository } from "@/services/persistence/chatConversationRepository";
 import { messageRepository } from "@/services/persistence/messageRepository";
+
+function mergePersistedMessages(
+  previous: Record<string, Message[]>,
+  persistedMessages: Record<string, Message[]>,
+) {
+  const next = { ...previous };
+
+  Object.entries(persistedMessages).forEach(([chatId, persisted]) => {
+    const existing = next[chatId] ?? [];
+    const byId = new Map<string, Message>();
+
+    [...existing, ...persisted].forEach((message) => {
+      byId.set(message.id, message);
+    });
+
+    next[chatId] = sortMessagesChronologically(Array.from(byId.values()));
+  });
+
+  return next;
+}
 
 interface UseChatSynchronizationParams {
   realtimeOriginId: string;
@@ -12,14 +33,7 @@ interface UseChatSynchronizationParams {
   archivedChats: Chat[];
   setActiveChats: Dispatch<SetStateAction<Chat[]>>;
   setMessages: Dispatch<SetStateAction<Record<string, Message[]>>>;
-  addMessageBase: (
-    chatId: string,
-    content: string,
-    isArchived: boolean,
-    restoreChat?: (chatId: string) => void,
-    updateChatList?: (chatId: string, content: string, timestamp: string, createdAt?: string) => void,
-    messageOverrides?: Partial<Message>,
-  ) => void;
+  addMessageBase: AddMessageBase;
   restoreChat: (chatId: string) => void;
   upsertIncomingQuoteRequest: (request: QuoteRequest) => void;
   upsertIncomingQuoteResponse: (response: QuoteResponse) => void;
@@ -48,24 +62,7 @@ export function useChatSynchronization({
       }
 
       setMessages((previous) => {
-        const next = { ...previous };
-
-        Object.entries(persistedMessages).forEach(([chatId, persisted]) => {
-          const existing = next[chatId] ?? [];
-          const byId = new Map<string, Message>();
-
-          [...existing, ...persisted].forEach((message) => {
-            byId.set(message.id, message);
-          });
-
-          next[chatId] = Array.from(byId.values()).sort((left, right) => {
-            const leftTime = left.createdAt ?? left.timestamp;
-            const rightTime = right.createdAt ?? right.timestamp;
-            return leftTime.localeCompare(rightTime);
-          });
-        });
-
-        return next;
+        return mergePersistedMessages(previous, persistedMessages);
       });
     };
 
@@ -87,7 +84,7 @@ export function useChatSynchronization({
     });
   };
 
-  const updateChatListEntry = (chatId: string, content: string, timestamp: string, createdAt = new Date().toISOString()) => {
+  const updateChatListEntry: UpdateChatListEntry = (chatId, content, timestamp, createdAt = new Date().toISOString()) => {
     const chatList = [...activeChats, ...archivedChats];
     const chatToUpdate = chatList.find((chat) => chat.id === chatId);
 
