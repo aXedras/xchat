@@ -29,6 +29,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -49,6 +50,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -69,6 +71,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -92,12 +95,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -107,7 +104,7 @@ jobs:
         run: python3 -m pip install --upgrade pip semgrep
 
       - name: Run architecture rules
-        run: npm run semgrep:arch
+        run: sh ./scripts/run-semgrep.sh --config .semgrep/architecture.yml --error src
 
   semgrep-security:
     name: Semgrep security scan
@@ -116,12 +113,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -189,6 +180,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -217,17 +209,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
-        run: npm run docker:build:ci
+        run: docker build -t xchat:ci .
 
       - name: Start container for OWASP scan
         run: |
