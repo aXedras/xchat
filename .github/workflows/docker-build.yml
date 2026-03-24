@@ -11,8 +11,13 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.12"
+
 jobs:
-  ci:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -22,65 +27,112 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run build
+        run: npm run build
+
+  duplication-check:
+    name: Duplication check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run duplication check
+        run: npm run jscpd
+
+      - name: Upload duplication report
+        if: always() && github.actor != 'nektos/act'
+        uses: actions/upload-artifact@v4
+        with:
+          name: duplication-report
+          path: reports/jscpd
+          if-no-files-found: ignore
+
+  architecture-check:
+    name: Architecture check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Install dependencies
-        run: npm ci
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Semgrep
         run: python3 -m pip install --upgrade pip semgrep
 
-      - name: Run lint, build, duplication and architecture checks
-        run: npm run ci:verify
+      - name: Run architecture rules
+        run: npm run semgrep:arch
 
-      - name: Run Semgrep with OWASP Top 10 and architecture rules
-        run: npm run semgrep:ci
+  semgrep-security:
+    name: Semgrep security scan
+    runs-on: ubuntu-latest
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Run E2E tests
-        run: npm run test:e2e
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
 
-      - name: Build Docker image
-        run: npm run docker:build:ci
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Start container for OWASP scan
-        run: |
-          docker run -d --rm --name xchat-ci -p 127.0.0.1::8080 xchat:ci
-          host_port=$(docker port xchat-ci 8080/tcp | sed 's/.*://')
-          echo "XCHAT_HOST_PORT=$host_port" >> "$GITHUB_ENV"
+      - name: Install Semgrep
+        run: python3 -m pip install --upgrade pip semgrep
 
-      - name: Wait for application
-        run: |
-          for attempt in {1..20}; do
-            if curl --fail --silent "http://127.0.0.1:$XCHAT_HOST_PORT" > /dev/null; then
-              exit 0
-            fi
-            sleep 3
-          done
-          echo "Application did not become ready in time" >&2
-          exit 1
-
-      - name: Run OWASP ZAP baseline scan
-        run: |
-          mkdir -p reports/zap
-          chmod 777 reports/zap
-          docker run --rm --network host -v "$PWD/reports/zap:/zap/wrk/:rw" ghcr.io/zaproxy/zaproxy:stable \
-            zap-baseline.py -I -t "http://127.0.0.1:$XCHAT_HOST_PORT" -m 3 -r zap-report.html -J zap-report.json
-
-      - name: Stop container
-        if: always()
-        run: docker stop xchat-ci || true
+      - name: Run Semgrep with OWASP Top 10 rules
+        run: sh ./scripts/run-semgrep.sh --config p/owasp-top-ten --error --sarif --output semgrep.sarif .
 
       - name: Detect GitHub code scanning availability
         id: code-scanning
@@ -116,14 +168,99 @@ jobs:
         with:
           sarif_file: semgrep.sarif
 
-      - name: Upload quality, E2E and ZAP reports
+      - name: Upload Semgrep report
         if: always() && github.actor != 'nektos/act'
         uses: actions/upload-artifact@v4
         with:
-          name: quality-security-and-e2e-reports
+          name: semgrep-report
+          path: semgrep.sarif
+          if-no-files-found: ignore
+
+  e2e-tests:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Upload E2E reports
+        if: always() && github.actor != 'nektos/act'
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-reports
           path: |
-            semgrep.sarif
-            reports/zap
             playwright-report
             test-results
+          if-no-files-found: ignore
+
+  docker-security:
+    name: Docker build and ZAP scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: npm run docker:build:ci
+
+      - name: Start container for OWASP scan
+        run: |
+          docker run -d --rm --name xchat-ci -p 127.0.0.1::8080 xchat:ci
+          host_port=$(docker port xchat-ci 8080/tcp | sed 's/.*://')
+          echo "XCHAT_HOST_PORT=$host_port" >> "$GITHUB_ENV"
+
+      - name: Wait for application
+        run: |
+          for attempt in {1..20}; do
+            if curl --fail --silent "http://127.0.0.1:$XCHAT_HOST_PORT" > /dev/null; then
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Application did not become ready in time" >&2
+          exit 1
+
+      - name: Run OWASP ZAP baseline scan
+        run: |
+          mkdir -p reports/zap
+          chmod 777 reports/zap
+          docker run --rm --network host -v "$PWD/reports/zap:/zap/wrk/:rw" ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -I -t "http://127.0.0.1:$XCHAT_HOST_PORT" -m 3 -r zap-report.html -J zap-report.json
+
+      - name: Stop container
+        if: always()
+        run: docker stop xchat-ci || true
+
+      - name: Upload ZAP reports
+        if: always() && github.actor != 'nektos/act'
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-reports
+          path: reports/zap
           if-no-files-found: ignore
