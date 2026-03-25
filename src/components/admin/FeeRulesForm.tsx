@@ -1,5 +1,6 @@
 import { ChangeEvent, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useAvailableCompanies } from "@/hooks/useAvailableCompanies";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -8,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { companies } from "@/data/mockCompanies";
 import { feeService } from "@/services/feeService";
 import { logger } from "@/services/logger";
 import { FeeRule } from "@/types/chat";
@@ -18,6 +18,7 @@ import { FeeRuleEditor } from "@/components/admin/fee-rules/FeeRuleEditor";
 import { buildNewRule, downloadTextFile, validateRule } from "@/components/admin/fee-rules/formConfig";
 
 const FeeRulesForm = () => {
+  const companies = useAvailableCompanies();
   const [profiles, setProfiles] = useState(() => feeService.listProfiles());
   const importInputRef = useRef<HTMLInputElement>(null);
 

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useAdminConnectionState } from "@/hooks/useAdminConnectionState";
+import { useAvailableCompanies } from "@/hooks/useAvailableCompanies";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { logger } from "@/services/logger";
@@ -19,6 +20,7 @@ import {
 
 const CompanyRegistrationForm = () => {
   const connectionState = useAdminConnectionState();
+  const availableCompanies = useAvailableCompanies();
   const isConnected = connectionState.status === "connected";
   const [isLoading, setIsLoading] = useState(false);
   const [companyName, setCompanyName] = useState("");
@@ -27,6 +29,9 @@ const CompanyRegistrationForm = () => {
   const [users, setUsers] = useState([
     { name: "", role: "" }
   ]);
+
+  const normalizedCompanyName = companyName.trim().toLowerCase();
+  const duplicateCompany = availableCompanies.find((company) => company.name.trim().toLowerCase() === normalizedCompanyName);
 
   const handleAddUser = () => {
     setUsers([...users, { name: "", role: "" }]);
@@ -47,6 +52,11 @@ const CompanyRegistrationForm = () => {
     
     if (!isConnected) {
       toast.error("API connection required. Please connect your API key first.");
+      return;
+    }
+
+    if (duplicateCompany) {
+      toast.error(`Company "${duplicateCompany.name}" already exists.`);
       return;
     }
     
@@ -118,6 +128,15 @@ const CompanyRegistrationForm = () => {
           <AlertTitle>API connection required</AlertTitle>
           <AlertDescription>
             Establish an admin API connection before registering companies and users.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {duplicateCompany && (
+        <Alert variant="destructive">
+          <AlertTitle>Duplicate company</AlertTitle>
+          <AlertDescription>
+            Company "{duplicateCompany.name}" already exists and cannot be registered twice.
           </AlertDescription>
         </Alert>
       )}
@@ -237,7 +256,7 @@ const CompanyRegistrationForm = () => {
         <Button 
           type="submit" 
           className="w-full"
-          disabled={isLoading || !isConnected || !companyName || !companyLocation || !companyType}
+          disabled={isLoading || !isConnected || !companyName || !companyLocation || !companyType || !!duplicateCompany}
         >
           {isLoading ? (
             <>

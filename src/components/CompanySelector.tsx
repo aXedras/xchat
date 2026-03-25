@@ -10,10 +10,10 @@ import {
 } from "@/components/ui/dialog";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { useAvailableCompanies } from "@/hooks/useAvailableCompanies";
 import CompanyList from "./company/CompanyList";
 import CompanyDetail from "./company/CompanyDetail";
 import { Company, User as UserType } from "@/types/chat";
-import { companies } from "@/data/mockCompanies";
 
 interface CompanySelectorProps {
   onClose: () => void;
@@ -27,6 +27,7 @@ interface CompanySelectorProps {
 }
 
 const CompanySelector = ({ onClose, onCreateChat }: CompanySelectorProps) => {
+  const companies = useAvailableCompanies();
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   
   const handleSelectCompany = (company: Company) => {
