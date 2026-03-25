@@ -1,12 +1,14 @@
 
 import { useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useAdminConnectionState } from "@/hooks/useAdminConnectionState";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { logger } from "@/services/logger";
 import { adminUtils } from "@/utils/adminUtils";
 import { Loader2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
-import { authService } from "@/services/authService";
 import {
   Select,
   SelectContent,
@@ -16,6 +18,8 @@ import {
 } from "@/components/ui/select";
 
 const CompanyRegistrationForm = () => {
+  const connectionState = useAdminConnectionState();
+  const isConnected = connectionState.status === "connected";
   const [isLoading, setIsLoading] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [companyLocation, setCompanyLocation] = useState("");
@@ -41,7 +45,7 @@ const CompanyRegistrationForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!authService.isAuthenticated()) {
+    if (!isConnected) {
       toast.error("API connection required. Please connect your API key first.");
       return;
     }
@@ -65,20 +69,16 @@ const CompanyRegistrationForm = () => {
         },
         filteredUsers
       );
-      
-      if (company) {
-        toast.success(`Company "${companyName}" registered with ${company.users.length} users`);
-        // Reset form
-        setCompanyName("");
-        setCompanyLocation("");
-        setCompanyType("");
-        setUsers([{ name: "", role: "" }]);
-      } else {
-        toast.error("Failed to register company");
-      }
+
+      toast.success(`Company "${companyName}" registered with ${company.users.length} users`);
+      setCompanyName("");
+      setCompanyLocation("");
+      setCompanyType("");
+      setUsers([{ name: "", role: "" }]);
     } catch (error) {
-      toast.error("An error occurred during company registration");
-      console.error("Company registration error:", error);
+      const message = error instanceof Error ? error.message : "An error occurred during company registration";
+      toast.error(message);
+      logger.error("Company registration error", { error, companyName });
     } finally {
       setIsLoading(false);
     }
@@ -112,6 +112,15 @@ const CompanyRegistrationForm = () => {
       <p className="text-sm text-muted-foreground mb-4">
         Add a new company and its users to the platform
       </p>
+
+      {!isConnected && (
+        <Alert>
+          <AlertTitle>API connection required</AlertTitle>
+          <AlertDescription>
+            Establish an admin API connection before registering companies and users.
+          </AlertDescription>
+        </Alert>
+      )}
       
       <div className="space-y-4">
         <div className="space-y-2">
@@ -122,7 +131,7 @@ const CompanyRegistrationForm = () => {
             onChange={(e) => setCompanyName(e.target.value)}
             placeholder="Enter company name"
             required
-            disabled={isLoading}
+            disabled={isLoading || !isConnected}
           />
         </div>
         
@@ -134,7 +143,7 @@ const CompanyRegistrationForm = () => {
             onChange={(e) => setCompanyLocation(e.target.value)}
             placeholder="Country or city"
             required
-            disabled={isLoading}
+            disabled={isLoading || !isConnected}
           />
         </div>
         
@@ -143,7 +152,7 @@ const CompanyRegistrationForm = () => {
           <Select
             value={companyType}
             onValueChange={setCompanyType}
-            disabled={isLoading}
+            disabled={isLoading || !isConnected}
           >
             <SelectTrigger id="companyType">
               <SelectValue placeholder="Select company type" />
@@ -167,7 +176,7 @@ const CompanyRegistrationForm = () => {
             variant="outline"
             size="sm"
             onClick={handleAddUser}
-            disabled={isLoading}
+            disabled={isLoading || !isConnected}
           >
             <Plus className="h-4 w-4 mr-1" />
             Add User
@@ -184,7 +193,7 @@ const CompanyRegistrationForm = () => {
                   value={user.name}
                   onChange={(e) => handleUserChange(index, 'name', e.target.value)}
                   placeholder="User name"
-                  disabled={isLoading}
+                  disabled={isLoading || !isConnected}
                 />
               </div>
               
@@ -193,7 +202,7 @@ const CompanyRegistrationForm = () => {
                 <Select 
                   value={user.role}
                   onValueChange={(value) => handleUserChange(index, 'role', value)}
-                  disabled={isLoading}
+                  disabled={isLoading || !isConnected}
                 >
                   <SelectTrigger id={`userRole-${index}`}>
                     <SelectValue placeholder="Select role" />
@@ -215,7 +224,7 @@ const CompanyRegistrationForm = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => handleRemoveUser(index)}
-                disabled={isLoading}
+                disabled={isLoading || !isConnected}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -228,7 +237,7 @@ const CompanyRegistrationForm = () => {
         <Button 
           type="submit" 
           className="w-full"
-          disabled={isLoading || !companyName || !companyLocation || !companyType}
+          disabled={isLoading || !isConnected || !companyName || !companyLocation || !companyType}
         >
           {isLoading ? (
             <>

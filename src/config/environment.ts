@@ -5,6 +5,10 @@
 const defaultConfig = {
   // API endpoints
   apiUrl: "/api",
+  api: {
+    baseUrl: import.meta.env.VITE_API_BASE_URL || "/api",
+    mode: ((import.meta.env.VITE_API_MODE || (import.meta.env.DEV ? "mock" : "real")) as "mock" | "real"),
+  },
   
   // WebSocket endpoint for the messaging service
   wsUrl: import.meta.env.VITE_WS_URL || "ws://localhost:8080/ws",
