@@ -7,6 +7,8 @@ export const companies: Company[] = [
     name: "Argor-Heraeus",
     location: "Switzerland",
     type: "Refiner",
+    source: "seed",
+    registrationStatus: "active",
     users: [
       { id: "1-1", name: "Jane Smith", role: "Sales Manager" },
       { id: "1-2", name: "Robert Chen", role: "Operations Director" },
@@ -18,6 +20,8 @@ export const companies: Company[] = [
     name: "PAMP",
     location: "Switzerland",
     type: "Refiner",
+    source: "seed",
+    registrationStatus: "active",
     users: [
       { id: "2-1", name: "Michael Thompson", role: "CEO" },
       { id: "2-2", name: "Sarah Miller", role: "Head of Trading" }
@@ -28,6 +32,8 @@ export const companies: Company[] = [
     name: "Valcambi",
     location: "Switzerland",
     type: "Refiner",
+    source: "seed",
+    registrationStatus: "active",
     users: [
       { id: "3-1", name: "Thomas Weber", role: "Chief Technology Officer" },
       { id: "3-2", name: "Lisa Johnson", role: "Supply Chain Manager" }
@@ -38,6 +44,8 @@ export const companies: Company[] = [
     name: "Royal Canadian Mint",
     location: "Canada",
     type: "Mint",
+    source: "seed",
+    registrationStatus: "active",
     users: [
       { id: "4-1", name: "David Wilson", role: "Product Manager" },
       { id: "4-2", name: "Emily Brown", role: "Head of Security" }
@@ -48,6 +56,8 @@ export const companies: Company[] = [
     name: "Brinks Global Services",
     location: "United States",
     type: "Logistics",
+    source: "seed",
+    registrationStatus: "active",
     users: [
       { id: "5-1", name: "James Clark", role: "Operations Manager" },
       { id: "5-2", name: "Patricia Martinez", role: "Client Relations" }

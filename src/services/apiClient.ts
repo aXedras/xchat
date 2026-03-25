@@ -1,6 +1,7 @@
 
 import config from "@/config/environment";
 import { adminConnectionStore } from "@/services/adminConnectionStore";
+import { companyDirectoryStore } from "@/services/companyDirectoryStore";
 import { Company, User } from "@/types/chat";
 
 const API_BASE_URL = config.api.baseUrl;
@@ -161,7 +162,10 @@ const simulateApiRequest = async <T>(url: string, options: RequestInit): Promise
     return {
       ...companyData,
       id: `company_${Date.now()}`,
-      users: companyData.users || []
+      users: companyData.users || [],
+      source: "admin",
+      registrationStatus: "active",
+      createdAt: new Date().toISOString(),
     } as T;
   }
   
@@ -178,23 +182,11 @@ const simulateApiRequest = async <T>(url: string, options: RequestInit): Promise
   }
   
   if (url === '/companies' && method === 'GET') {
-    return { companies: mockCompanies } as T;
+    return { companies: companyDirectoryStore.getCompanies() } as T;
   }
   
   throw new ApiError(`Endpoint not found: ${url}`, 404, 'not_found');
 };
-
-const mockCompanies = [
-  {
-    id: "api-1",
-    name: "API Test Company",
-    location: "Switzerland",
-    type: "Refiner",
-    users: [
-      { id: "api-1-1", name: "API User", role: "Admin" }
-    ]
-  }
-];
 
 export const apiClient = {
   getApiToken: (apiKey: string, apiSecret: string) => {

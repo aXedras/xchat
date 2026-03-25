@@ -1,6 +1,7 @@
 
 import { adminConnectionService } from '@/services/adminConnectionService';
 import { apiClient } from '@/services/apiClient';
+import { companyDirectoryStore } from '@/services/companyDirectoryStore';
 import { logger } from '@/services/logger';
 import { AdminConnectionState } from '@/types/admin';
 import { Company, User } from '@/types/chat';
@@ -20,6 +21,10 @@ export const adminUtils = {
     users: Omit<User, 'id'>[]
   ): Promise<Company> => {
     try {
+      if (companyDirectoryStore.companyExists(companyData.name)) {
+        throw new Error(`Company "${companyData.name}" already exists.`);
+      }
+
       const company = await apiClient.registerCompany({
         ...companyData,
         users: []
@@ -32,10 +37,13 @@ export const adminUtils = {
         registeredUsers.push(user);
       }
 
-      return {
+      const registeredCompany = {
         ...company,
         users: registeredUsers
       };
+
+      companyDirectoryStore.registerCompany(registeredCompany);
+      return registeredCompany;
     } catch (error) {
       logger.error('Failed to register company with users', {
         companyName: companyData.name,

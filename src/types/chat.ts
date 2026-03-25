@@ -250,4 +250,7 @@ export interface Company {
   location: string;
   type: string;
   users: User[];
+  source?: "seed" | "admin";
+  registrationStatus?: "active";
+  createdAt?: string;
 }
