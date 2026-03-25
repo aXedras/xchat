@@ -4,10 +4,9 @@
  */
 
 import config from "@/config/environment";
+import { adminConnectionStore } from "@/services/adminConnectionStore";
 import { getSupabaseBrowserClient, hasSupabaseConfig } from "@/services/supabase/client";
 
-// Simulated API token (in a real app, this would be handled securely)
-let apiToken: string | null = null;
 const APP_AUTH_STORAGE_KEY = "xchat.appAuth";
 
 export interface AppAuthIdentity {
@@ -52,47 +51,23 @@ function persistAppIdentity(identity: AppAuthIdentity | null) {
 }
 
 export const authService = {
-  /**
-   * Get the current API token
-   */
   getToken: (): string | null => {
-    return apiToken;
+    return adminConnectionStore.getToken();
   },
 
-  /**
-   * Set a new API token
-   */
   setToken: (token: string): void => {
-    apiToken = token;
-    // In a real implementation, this might store the token securely
-    localStorage.setItem('api_token', token);
+    adminConnectionStore.setConnected(token);
   },
 
-  /**
-   * Clear the current API token
-   */
   clearToken: (): void => {
-    apiToken = null;
-    localStorage.removeItem('api_token');
+    adminConnectionStore.clear();
   },
 
-  /**
-   * Check if a token exists and is valid
-   */
   isAuthenticated: (): boolean => {
-    const token = apiToken || localStorage.getItem('api_token');
-    return !!token;
+    return adminConnectionStore.isConnected();
   },
 
-  /**
-   * Initialize the service by checking for stored token
-   */
   initialize: (): void => {
-    const storedToken = localStorage.getItem('api_token');
-    if (storedToken) {
-      apiToken = storedToken;
-    }
-
     const storedIdentity = localStorage.getItem(APP_AUTH_STORAGE_KEY);
     if (storedIdentity) {
       try {

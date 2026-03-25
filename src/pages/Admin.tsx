@@ -1,20 +1,22 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApiKeyForm from "@/components/admin/ApiKeyForm";
 import CompanyRegistrationForm from "@/components/admin/CompanyRegistrationForm";
 import FeeRulesForm from "@/components/admin/FeeRulesForm";
-import { authService } from "@/services/authService";
+import { useAdminConnectionState } from "@/hooks/useAdminConnectionState";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("api");
-  const isAuthenticated = authService.isAuthenticated();
-  const protectedTabTitle = isAuthenticated ? undefined : "API connection required";
-  
-  // If not authenticated and trying to access protected tabs, switch back to API tab
-  if (!isAuthenticated && ["companies", "fees"].includes(activeTab)) {
-    setActiveTab("api");
-  }
+  const connectionState = useAdminConnectionState();
+  const isConnected = connectionState.status === "connected";
+  const protectedTabTitle = isConnected ? undefined : "API connection required";
+
+  useEffect(() => {
+    if (!isConnected && ["companies", "fees"].includes(activeTab)) {
+      setActiveTab("api");
+    }
+  }, [activeTab, isConnected]);
 
   return (
     <div className="container max-w-4xl py-6 space-y-6">
@@ -34,14 +36,14 @@ const Admin = () => {
           <TabsTrigger value="api">API Connection</TabsTrigger>
           <TabsTrigger 
             value="companies" 
-            disabled={!isAuthenticated}
+            disabled={!isConnected}
             title={protectedTabTitle}
           >
             Company Registration
           </TabsTrigger>
           <TabsTrigger
             value="fees"
-            disabled={!isAuthenticated}
+            disabled={!isConnected}
             title={protectedTabTitle}
           >
             Customer Fees

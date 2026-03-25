@@ -1,143 +1,190 @@
 
-import { authService } from './authService';
-import { Company, User } from '@/types/chat';
+import config from "@/config/environment";
+import { adminConnectionStore } from "@/services/adminConnectionStore";
+import { Company, User } from "@/types/chat";
 
-// Base URL for API requests (would be environment-specific in a real app)
-const API_BASE_URL = '/api';
+const API_BASE_URL = config.api.baseUrl;
 
-/**
- * Custom error class for API errors
- */
+export type ApiErrorCode =
+  | "invalid_credentials"
+  | "unauthorized"
+  | "validation_error"
+  | "network_error"
+  | "not_found"
+  | "server_error"
+  | "unknown";
+
+interface ApiTokenResponse {
+  token: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 export class ApiError extends Error {
   status: number;
-  
-  constructor(message: string, status: number) {
+  code: ApiErrorCode;
+  details?: unknown;
+
+  constructor(message: string, status: number, code: ApiErrorCode, details?: unknown) {
     super(message);
     this.status = status;
-    this.name = 'ApiError';
+    this.code = code;
+    this.details = details;
+    this.name = "ApiError";
   }
 }
 
-/**
- * Generic fetch wrapper with authentication and error handling
- */
-const fetchWithAuth = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
-  // In mock mode, simulate network delay
-  if (import.meta.env.MODE === 'development') {
-    await new Promise(resolve => setTimeout(resolve, 500));
-  }
-  
-  const token = authService.getToken();
-  
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-    ...options.headers
+function buildHeaders(options: RequestInit) {
+  const token = adminConnectionStore.getToken();
+
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
   };
-  
+}
+
+function toApiErrorCode(status: number, details?: unknown): ApiErrorCode {
+  if (isRecord(details) && typeof details.code === "string") {
+    return details.code as ApiErrorCode;
+  }
+
+  switch (status) {
+    case 400:
+      return "validation_error";
+    case 401:
+      return "unauthorized";
+    case 404:
+      return "not_found";
+    default:
+      return status >= 500 ? "server_error" : "unknown";
+  }
+}
+
+function toApiMessage(status: number, details?: unknown) {
+  if (isRecord(details) && typeof details.message === "string") {
+    return details.message;
+  }
+
+  if (typeof details === "string" && details.length > 0) {
+    return details;
+  }
+
+  if (status === 401) {
+    return "Unauthorized: API token required";
+  }
+
+  if (status >= 500) {
+    return "The API is currently unavailable";
+  }
+
+  return "An error occurred with the API request";
+}
+
+async function parseResponse<T>(response: Response): Promise<T> {
+  const raw = await response.text();
+  let payload: unknown = null;
+
+  if (raw) {
+    try {
+      payload = JSON.parse(raw) as unknown;
+    } catch {
+      payload = raw;
+    }
+  }
+
+  if (!response.ok) {
+    throw new ApiError(toApiMessage(response.status, payload), response.status, toApiErrorCode(response.status, payload), payload);
+  }
+
+  return payload as T;
+}
+
+const fetchWithAuth = async <T>(url: string, options: RequestInit = {}, allowUnauthenticated = false): Promise<T> => {
   try {
-    // In development, simulate API for now
-    if (import.meta.env.MODE === 'development') {
+    if (config.api.mode === "mock") {
+      await new Promise((resolve) => setTimeout(resolve, 200));
       return await simulateApiRequest<T>(url, {
         ...options,
-        headers
+        headers: buildHeaders(options),
       });
     }
-    
+
+    if (!allowUnauthenticated && !adminConnectionStore.getToken()) {
+      throw new ApiError("Unauthorized: API token required", 401, "unauthorized");
+    }
+
     const response = await fetch(`${API_BASE_URL}${url}`, {
       ...options,
-      headers
+      headers: buildHeaders(options),
     });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new ApiError(
-        data.message || 'An error occurred with the API request',
-        response.status
-      );
-    }
-    
-    return data as T;
+
+    return await parseResponse<T>(response);
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
     }
-    throw new ApiError('Failed to connect to the API', 500);
+
+    throw new ApiError("Failed to connect to the API", 500, "network_error", error);
   }
 };
 
-/**
- * Simulate API requests in development
- */
 const simulateApiRequest = async <T>(url: string, options: RequestInit): Promise<T> => {
   const { method = 'GET', body } = options;
-  const token = authService.getToken();
+  const token = adminConnectionStore.getToken();
   
-  // Check authorization for protected endpoints
   if (url !== '/auth/token' && !token) {
-    throw new ApiError('Unauthorized: API token required', 401);
+    throw new ApiError('Unauthorized: API token required', 401, 'unauthorized');
   }
   
-  // Handle API token generation
   if (url === '/auth/token' && method === 'POST') {
     const { apiKey, apiSecret } = JSON.parse(body as string);
-    
-    // Simple validation - in a real app this would verify against a secure source
-    if (apiKey === 'demo_key' && apiSecret === 'demo_secret') {
-      return { token: `mock_token_${Date.now()}` } as unknown as T;
-    } else {
-      throw new ApiError('Invalid API credentials', 401);
+    if (!apiKey || !apiSecret) {
+      throw new ApiError('API key and secret are required', 400, 'validation_error');
     }
+
+    if (apiKey === 'demo_key' && apiSecret === 'demo_secret') {
+      return { token: `mock_token_${Date.now()}` } as T;
+    }
+
+    throw new ApiError('Invalid API credentials', 401, 'invalid_credentials');
   }
   
-  // Company registration endpoint
   if (url === '/companies' && method === 'POST') {
     const companyData = JSON.parse(body as string);
-    
-    // Validate required fields
     if (!companyData.name || !companyData.location || !companyData.type) {
-      throw new ApiError('Missing required company fields', 400);
+      throw new ApiError('Missing required company fields', 400, 'validation_error');
     }
-    
-    // Generate mock ID and return created company
+
     return {
       ...companyData,
       id: `company_${Date.now()}`,
       users: companyData.users || []
-    } as unknown as T;
+    } as T;
   }
   
-  // User registration endpoint
   if (url.match(/\/companies\/[^/]+\/users/) && method === 'POST') {
     const userData = JSON.parse(body as string);
-    
-    // Validate required fields
     if (!userData.name || !userData.role) {
-      throw new ApiError('Missing required user fields', 400);
+      throw new ApiError('Missing required user fields', 400, 'validation_error');
     }
-    
-    // Generate mock ID and return created user
+
     return {
       ...userData,
       id: `user_${Date.now()}`
-    } as unknown as T;
+    } as T;
   }
   
-  // Get companies endpoint
   if (url === '/companies' && method === 'GET') {
-    // Return mock companies data
-    return { companies: mockCompanies } as unknown as T;
+    return { companies: mockCompanies } as T;
   }
   
-  throw new ApiError(`Endpoint not found: ${url}`, 404);
+  throw new ApiError(`Endpoint not found: ${url}`, 404, 'not_found');
 };
 
-/**
- * Mock companies data for development
- */
 const mockCompanies = [
-  // Simplified version of the existing mock data
   {
     id: "api-1",
     name: "API Test Company",
@@ -149,28 +196,14 @@ const mockCompanies = [
   }
 ];
 
-/**
- * Main API client with company and user registration methods
- */
 export const apiClient = {
-  /**
-   * Get an API token using API key and secret
-   * @param apiKey Client API key
-   * @param apiSecret Client API secret
-   * @returns Promise with token response
-   */
   getApiToken: (apiKey: string, apiSecret: string) => {
-    return fetchWithAuth<{ token: string }>('/auth/token', {
+    return fetchWithAuth<ApiTokenResponse>('/auth/token', {
       method: 'POST',
       body: JSON.stringify({ apiKey, apiSecret })
-    });
+    }, true);
   },
-  
-  /**
-   * Register a new company
-   * @param company Company data
-   * @returns Promise with created company
-   */
+
   registerCompany: (company: Omit<Company, 'id'>) => {
     return fetchWithAuth<Company>('/companies', {
       method: 'POST',
@@ -178,12 +211,6 @@ export const apiClient = {
     });
   },
   
-  /**
-   * Register a new user for a company
-   * @param companyId Target company ID
-   * @param user User data
-   * @returns Promise with created user
-   */
   registerUser: (companyId: string, user: Omit<User, 'id'>) => {
     return fetchWithAuth<User>(`/companies/${companyId}/users`, {
       method: 'POST',
@@ -191,10 +218,6 @@ export const apiClient = {
     });
   },
   
-  /**
-   * Get all companies
-   * @returns Promise with companies list
-   */
   getCompanies: () => {
     return fetchWithAuth<{ companies: Company[] }>('/companies');
   }
