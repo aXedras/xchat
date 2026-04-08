@@ -1,4 +1,3 @@
-
 # xChat - Professional Chat Platform for the Precious Metals Industry
 
 [![Build Status](https://github.com/marcopersi/xchat/actions/workflows/docker-build.yml/badge.svg)](https://github.com/marcopersi/xchat/actions/workflows/docker-build.yml)
@@ -15,12 +14,14 @@ xChat is a specialized messaging platform designed for professionals in the prec
 ### Installation
 
 1. Clone the repository to your local machine:
+
 ```sh
 git clone <your-repository-url>
 cd xchat
 ```
 
 2. Install project dependencies:
+
 ```sh
 npm install
 # or
@@ -28,6 +29,7 @@ yarn install
 ```
 
 3. Start the development server:
+
 ```sh
 npm run dev
 # or
@@ -35,6 +37,7 @@ yarn dev
 ```
 
 4. Open your browser and navigate to:
+
 ```
 http://localhost:8080
 ```
@@ -59,9 +62,46 @@ docker run -p 8080:8080 xchat:latest
 
 Then access the application at `http://localhost:8080` in your browser.
 
+### Pulling the Demo Image from GHCR
+
+Pushes to `main` now publish a Linux AMD64 image to GitHub Container Registry:
+
+```sh
+docker pull ghcr.io/marcopersi/xchat:latest
+```
+
+Example VM deployment with runtime configuration:
+
+```sh
+docker run -d --name xchat \
+   -p 8080:8080 \
+   -e XCHAT_VENDOR_ADMIN_EMAIL=admin@vendor.local \
+   -e XCHAT_VENDOR_ADMIN_PASSWORD='change-this-password' \
+   -e XCHAT_BIL_ENABLED=true \
+   -e XCHAT_BIL_BASE_URL=https://bil.example.com/api \
+   -e XCHAT_BIL_NETWORK=production \
+   -e XCHAT_BIL_PARTICIPANT_ID=vendor-desk-001 \
+   ghcr.io/marcopersi/xchat:latest
+```
+
+Or with Docker Compose on the VM:
+
+```sh
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+Runtime notes:
+
+- The container writes a `runtime-config.js` file at startup so the pulled image can be configured without rebuilding.
+- The vendor admin account is intended for demo and test operations only.
+- BIL settings can be seeded through container environment variables and then adjusted in the Admin Console.
+- A ready-to-use compose file is available in `docker-compose.ghcr.yml`.
+  The GHCR push uses the repository-scoped `GITHUB_TOKEN`, so no extra DockerHub secrets are required for the default image publication path.
+
 ## CI/CD Pipeline
 
 This repository includes one GitHub Actions workflow with one job that runs the full gate in a single pass:
+
 1. ESLint
 2. Production build
 3. JSCPD duplicate detection with a hard limit below 5%
@@ -73,6 +113,8 @@ This repository includes one GitHub Actions workflow with one job that runs the 
 
 The workflow runs automatically when code is pushed to the main branch or when a pull request is created.
 
+On pushes to `main`, the workflow also publishes the Docker image to `ghcr.io/marcopersi/xchat` with the tags `latest` and the full commit SHA.
+
 Generated artifacts such as `reports/`, `semgrep.sarif`, Playwright reports, build output, and Supabase temp files are intentionally ignored via `.gitignore` and uploaded by CI instead of being committed.
 
 ## Local Quality Gates
@@ -80,6 +122,7 @@ Generated artifacts such as `reports/`, `semgrep.sarif`, Playwright reports, bui
 The repository installs a `pre-commit` hook through Husky.
 
 Hook stack:
+
 - Prettier on staged files via `lint-staged`
 - JSCPD with a repository cap below 5%
 - Semgrep architecture rules
@@ -165,11 +208,13 @@ Recommended file layout:
 ```
 
 Key choice:
+
 - Use the Supabase publishable key for this Vite frontend.
 - Do not use the Supabase secret key in this app, because any `VITE_*` value is exposed to the browser bundle.
 - `VITE_SUPABASE_ANON_KEY` is still accepted as a legacy fallback, but new setup should use `VITE_SUPABASE_PUBLISHABLE_KEY`.
 
 Commit policy:
+
 - Do not commit `.env`, `.env.development`, `.env.local`, or other real env files.
 - Keep only `.env.example` in the repository as the reference template.
 
@@ -196,6 +241,8 @@ supabase/migrations/20260320011000_xchat_security_hardening.sql
 
 5. In Supabase Auth, enable either email/password or magic-link authentication for your users.
 
+For shared admin system settings, use a Supabase-authenticated admin session. The Admin Console stores BIL settings in `public.system_settings` when a signed-in Supabase user is present, and falls back to browser-local storage when Supabase auth is not available.
+
 6. Start the app:
 
 ```sh
@@ -203,10 +250,12 @@ npm run dev -- --host 127.0.0.1 --port 4173
 ```
 
 7. Log in with either:
+
 - the existing demo credentials, which keep using local fallback storage
 - a real Supabase user, which unlocks authenticated RLS-backed Supabase persistence
 
 Security notes:
+
 - The hardening migration replaces the initial dev-allow-all policies with `authenticated` RLS policies scoped to `auth.uid()`.
 - Each persisted row now carries an `owner_id`, so a signed-in Supabase user can only read and mutate their own rows.
 - If Supabase auth is not active, persistence automatically falls back to local browser storage instead of failing hard.
@@ -220,6 +269,7 @@ Manual fallback if you prefer SQL Editor:
 ```
 
 Notes:
+
 - If Supabase env values are missing, xChat automatically falls back to local browser-based transport/storage.
 - Realtime carrier options: `local`, `websocket`, `supabase`.
 - Persistence provider options: `local`, `supabase`.
@@ -257,7 +307,19 @@ If you're implementing your own backend, it should expose these endpoints:
 ## Demo Login Credentials
 
 Use these credentials to log in to the demo version:
+
 - **Email**: demo@axedras.com
+- **Password**: password
+
+The container also exposes a default vendor admin account unless overridden via runtime environment variables:
+
+- **Email**: admin@xchat.local
+- **Password**: change-me-demo-admin
+
+Use the vendor admin account to open the Admin Console and maintain browser-local system settings such as BIL connectivity in demo deployments.
+
+If Supabase auth is configured and the admin user signs in with a Supabase-backed account, the same Admin Console writes shared settings into `public.system_settings` instead of browser-local storage.
+
 - **Password**: password
 
 ## Project Structure
@@ -311,6 +373,7 @@ npm run test:e2e
 ```
 
 Current scenarios cover:
+
 - Login and dashboard access
 - Deal history visibility for counterparty context
 - Quote submission and conversion to booked deal
