@@ -1,13 +1,13 @@
-
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApiKeyForm from "@/components/admin/ApiKeyForm";
 import CompanyRegistrationForm from "@/components/admin/CompanyRegistrationForm";
 import FeeRulesForm from "@/components/admin/FeeRulesForm";
+import SystemSettingsForm from "@/components/admin/SystemSettingsForm";
 import { useAdminConnectionState } from "@/hooks/useAdminConnectionState";
 
 const Admin = () => {
-  const [activeTab, setActiveTab] = useState("api");
+  const [activeTab, setActiveTab] = useState("system");
   const connectionState = useAdminConnectionState();
   const isConnected = connectionState.status === "connected";
   const protectedTabTitle = isConnected ? undefined : "API connection required";
@@ -26,16 +26,17 @@ const Admin = () => {
           Manage companies and API integrations
         </p>
       </div>
-      
-      <Tabs 
-        value={activeTab} 
+
+      <Tabs
+        value={activeTab}
         onValueChange={setActiveTab}
         className="space-y-4"
       >
         <TabsList>
+          <TabsTrigger value="system">System Settings</TabsTrigger>
           <TabsTrigger value="api">API Connection</TabsTrigger>
-          <TabsTrigger 
-            value="companies" 
+          <TabsTrigger
+            value="companies"
             disabled={!isConnected}
             title={protectedTabTitle}
           >
@@ -49,7 +50,16 @@ const Admin = () => {
             Customer Fees
           </TabsTrigger>
         </TabsList>
-        
+
+        <TabsContent value="system" className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Maintain vendor-level settings for integrations and
+            deployment-specific behavior. BIL connectivity can be seeded at
+            container runtime and adjusted here for demo or test environments.
+          </p>
+          <SystemSettingsForm />
+        </TabsContent>
+
         <TabsContent value="api" className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Connect to the external API to enable company and user management.
@@ -57,18 +67,19 @@ const Admin = () => {
           </p>
           <ApiKeyForm />
         </TabsContent>
-        
+
         <TabsContent value="companies" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Register new companies and their users to the platform.
-            Companies registered here will be available for chat.
+            Register new companies and their users to the platform. Companies
+            registered here will be available for chat.
           </p>
           <CompanyRegistrationForm />
         </TabsContent>
 
         <TabsContent value="fees" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Maintain customer-specific fee matrices. Active rules are automatically surfaced during RFQ and deal discussions.
+            Maintain customer-specific fee matrices. Active rules are
+            automatically surfaced during RFQ and deal discussions.
           </p>
           <FeeRulesForm />
         </TabsContent>

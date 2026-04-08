@@ -1,16 +1,19 @@
-
 /**
  * Authentication service for API token management
  */
 
 import config from "@/config/environment";
 import { adminConnectionStore } from "@/services/adminConnectionStore";
-import { getSupabaseBrowserClient, hasSupabaseConfig } from "@/services/supabase/client";
+import {
+  getSupabaseBrowserClient,
+  hasSupabaseConfig,
+} from "@/services/supabase/client";
 
 const APP_AUTH_STORAGE_KEY = "xchat.appAuth";
 
 export interface AppAuthIdentity {
-  mode: "demo" | "supabase";
+  mode: "demo" | "supabase" | "vendor-admin";
+  role: "user" | "vendor-admin";
   userId?: string;
   email: string;
   displayName: string;
@@ -33,6 +36,25 @@ function buildDisplayName(email: string, fallback?: string | null) {
     .filter(Boolean)
     .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
     .join(" ");
+}
+
+function resolveSupabaseRole(user: {
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+}) {
+  const appRole =
+    typeof user.app_metadata?.role === "string"
+      ? user.app_metadata.role
+      : undefined;
+  const userRole =
+    typeof user.user_metadata?.role === "string"
+      ? user.user_metadata.role
+      : undefined;
+  const normalizedRole = (userRole || appRole || "").toLowerCase();
+
+  return normalizedRole === "vendor-admin" || normalizedRole === "admin"
+    ? "vendor-admin"
+    : "user";
 }
 
 function persistAppIdentity(identity: AppAuthIdentity | null) {
@@ -86,6 +108,10 @@ export const authService = {
     return appIdentity;
   },
 
+  isVendorAdmin: (): boolean => {
+    return appIdentity?.role === "vendor-admin";
+  },
+
   isAppAuthenticated: (): boolean => {
     return !!appIdentity;
   },
@@ -114,19 +140,46 @@ export const authService = {
 
     const identity: AppAuthIdentity = {
       mode: "supabase",
+      role: resolveSupabaseRole(user),
       userId: user.id,
       email: user.email,
-      displayName: buildDisplayName(user.email, user.user_metadata?.full_name as string | null | undefined),
+      displayName: buildDisplayName(
+        user.email,
+        user.user_metadata?.full_name as string | null | undefined,
+      ),
     };
 
     persistAppIdentity(identity);
     return identity;
   },
 
-  loginToApp: async (email: string, password: string): Promise<AppAuthIdentity> => {
-    if (config.demo.email && config.demo.password && email === config.demo.email && password === config.demo.password) {
+  loginToApp: async (
+    email: string,
+    password: string,
+  ): Promise<AppAuthIdentity> => {
+    if (
+      email === config.auth.vendorAdmin.email &&
+      password === config.auth.vendorAdmin.password
+    ) {
+      persistAppIdentity({
+        mode: "vendor-admin",
+        role: "vendor-admin",
+        userId: "vendor-admin",
+        email,
+        displayName: "Vendor Admin",
+      });
+      return appIdentity;
+    }
+
+    if (
+      config.demo.email &&
+      config.demo.password &&
+      email === config.demo.email &&
+      password === config.demo.password
+    ) {
       persistAppIdentity({
         mode: "demo",
+        role: "user",
         userId: "demo-user",
         email,
         displayName: "Demo User",
@@ -136,19 +189,28 @@ export const authService = {
 
     const client = getSupabaseBrowserClient();
     if (!client) {
-      throw new Error("Supabase authentication is not configured. Use the demo credentials or configure Supabase first.");
+      throw new Error(
+        "Supabase authentication is not configured. Use the demo credentials or configure Supabase first.",
+      );
     }
 
-    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    const { data, error } = await client.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (error || !data.user) {
       throw new Error(error?.message || "Invalid credentials");
     }
 
     persistAppIdentity({
       mode: "supabase",
+      role: resolveSupabaseRole(data.user),
       userId: data.user.id,
       email: data.user.email || email,
-      displayName: buildDisplayName(data.user.email || email, data.user.user_metadata?.full_name as string | null | undefined),
+      displayName: buildDisplayName(
+        data.user.email || email,
+        data.user.user_metadata?.full_name as string | null | undefined,
+      ),
     });
     return appIdentity;
   },
@@ -156,7 +218,9 @@ export const authService = {
   sendMagicLink: async (email: string): Promise<void> => {
     const client = getSupabaseBrowserClient();
     if (!client) {
-      throw new Error("Magic link login requires a configured Supabase project.");
+      throw new Error(
+        "Magic link login requires a configured Supabase project.",
+      );
     }
 
     const { error } = await client.auth.signInWithOtp({
@@ -178,7 +242,7 @@ export const authService = {
     }
 
     persistAppIdentity(null);
-  }
+  },
 };
 
 // Initialize the service when imported

@@ -3,6 +3,7 @@ name: CI Quality And Security
 permissions:
   actions: read
   contents: read
+  packages: write
   security-events: write
 
 on:
@@ -81,6 +82,25 @@ jobs:
       - name: Stop container
         if: always()
         run: docker stop xchat-ci || true
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push GHCR image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
 
       - name: Detect GitHub code scanning availability
         id: code-scanning

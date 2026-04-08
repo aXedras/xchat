@@ -21,10 +21,11 @@ RUN npm run build
 FROM nginxinc/nginx-unprivileged:stable-alpine
 
 # Copy built assets from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder --chown=101:0 /app/dist /usr/share/nginx/html
 
 # Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=755 --chown=101:0 docker/entrypoint.sh /entrypoint.sh
 
 # Expose port
 EXPOSE 8080
@@ -33,4 +34,4 @@ EXPOSE 8080
 USER 101
 
 # Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["/entrypoint.sh"]
