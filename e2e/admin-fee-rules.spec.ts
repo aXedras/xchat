@@ -1,13 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { clearSeedScenario, setSeedScenario } from "./fixtures/seedScenario";
-import { login } from "./support/auth";
+import {
+  clearAppStorage,
+  loginAsVendorAdminAndOpenAdmin,
+  openAdminConsole,
+  seedMockAdminConnection,
+} from "./support/admin";
 
 async function authenticateAdmin(page: import("@playwright/test").Page) {
-  await page.goto("/admin");
-  await expect(page.getByRole("heading", { name: "Admin Console" })).toBeVisible();
-
-  await expect(page.getByRole("tab", { name: "Customer Fees" })).toBeEnabled();
-  await page.getByRole("tab", { name: "Customer Fees" }).click();
+  await openAdminConsole(page, "Customer Fees");
   await expect(page.getByText("Customer Fee Matrix")).toBeVisible();
 }
 
@@ -15,12 +16,14 @@ test.describe("Admin fee rules", () => {
   test.beforeEach(async ({ page }) => {
     await clearSeedScenario(page);
     await setSeedScenario(page, "default");
-    await page.addInitScript(() => {
-      globalThis.localStorage.setItem("api_token", "e2e-admin-token");
-      globalThis.localStorage.removeItem("xchat.feeProfiles");
-    });
-
-    await login(page);
+    await clearAppStorage(page, [
+      "xchat.appAuth",
+      "api_token",
+      "xchat.adminConnection",
+      "xchat.feeProfiles",
+    ]);
+    await loginAsVendorAdminAndOpenAdmin(page);
+    await seedMockAdminConnection(page);
     await authenticateAdmin(page);
   });
 
@@ -82,12 +85,14 @@ test.describe("Admin fee rules – validation", () => {
   test.beforeEach(async ({ page }) => {
     await clearSeedScenario(page);
     await setSeedScenario(page, "default");
-    await page.addInitScript(() => {
-      globalThis.localStorage.setItem("api_token", "e2e-admin-token");
-      globalThis.localStorage.removeItem("xchat.feeProfiles");
-    });
-
-    await login(page);
+    await clearAppStorage(page, [
+      "xchat.appAuth",
+      "api_token",
+      "xchat.adminConnection",
+      "xchat.feeProfiles",
+    ]);
+    await loginAsVendorAdminAndOpenAdmin(page);
+    await seedMockAdminConnection(page);
     await authenticateAdmin(page);
     // Start with a fresh rule
     await page.getByRole("button", { name: "Add Fee Rule" }).click();

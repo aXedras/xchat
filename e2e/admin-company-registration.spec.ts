@@ -1,10 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { loginAsVendorAdmin } from "./support/auth";
+import { clearAppStorage, loginAsVendorAdminAndOpenAdmin } from "./support/admin";
 
 async function connectAdminApi(page: import("@playwright/test").Page) {
-  await loginAsVendorAdmin(page);
-  await page.goto("/admin");
-  await page.getByRole("tab", { name: "API Connection" }).click();
+  await loginAsVendorAdminAndOpenAdmin(page, "API Connection");
   await page.getByLabel("API Key").fill("demo_key");
   await page.getByLabel("API Secret").fill("demo_secret");
   await page.getByRole("button", { name: "Connect to API" }).click();
@@ -13,13 +11,12 @@ async function connectAdminApi(page: import("@playwright/test").Page) {
 
 test.describe("Admin company registration", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
-    await page.evaluate(() => {
-      globalThis.localStorage.removeItem("xchat.appAuth");
-      globalThis.localStorage.removeItem("api_token");
-      globalThis.localStorage.removeItem("xchat.adminConnection");
-      globalThis.localStorage.removeItem("xchat.registeredCompanies");
-    });
+    await clearAppStorage(page, [
+      "xchat.appAuth",
+      "api_token",
+      "xchat.adminConnection",
+      "xchat.registeredCompanies",
+    ]);
   });
 
   test("registers a company and exposes it in the conversation selector", async ({
