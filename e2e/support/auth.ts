@@ -27,18 +27,34 @@ export const vendorAdminAuth = {
   password: requireEnv("VITE_VENDOR_ADMIN_PASSWORD"),
 } as const;
 
-export async function login(page: Page) {
+async function loginWithCredentials(
+  page: Page,
+  credentials: { email: string; password: string },
+) {
   await page.goto("/");
-  await page.getByLabel("Email").fill(demoAuth.email);
-  await page.getByLabel("Password").fill(demoAuth.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+
+  const emailInput = page.getByLabel("Email");
+  const passwordInput = page.getByLabel("Password");
+  const signInButton = page.getByRole("button", {
+    name: "Sign in",
+    exact: true,
+  });
+
+  await expect(emailInput).toBeVisible();
+  await expect(passwordInput).toBeVisible();
+  await expect(signInButton).toBeVisible();
+
+  await emailInput.fill(credentials.email);
+  await passwordInput.fill(credentials.password);
+  await signInButton.click();
+}
+
+export async function login(page: Page) {
+  await loginWithCredentials(page, demoAuth);
   await expect(page).toHaveURL(/\/dashboard$/);
 }
 
 export async function loginAsVendorAdmin(page: Page) {
-  await page.goto("/");
-  await page.getByLabel("Email").fill(vendorAdminAuth.email);
-  await page.getByLabel("Password").fill(vendorAdminAuth.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await loginWithCredentials(page, vendorAdminAuth);
   await expect(page).toHaveURL(/\/dashboard$/);
 }

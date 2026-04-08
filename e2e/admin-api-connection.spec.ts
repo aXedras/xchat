@@ -1,20 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { loginAsVendorAdmin } from "./support/auth";
+import { clearAppStorage, loginAsVendorAdminAndOpenAdmin, openAdminConsole } from "./support/admin";
 
 test.describe("Admin API connection", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
-    await page.evaluate(() => {
-      globalThis.localStorage.removeItem("xchat.appAuth");
-      globalThis.localStorage.removeItem("api_token");
-      globalThis.localStorage.removeItem("xchat.adminConnection");
-    });
-    await loginAsVendorAdmin(page);
-    await page.goto("/admin");
-    await expect(
-      page.getByRole("heading", { name: "Admin Console" }),
-    ).toBeVisible();
-    await page.getByRole("tab", { name: "API Connection" }).click();
+    await clearAppStorage(page, [
+      "xchat.appAuth",
+      "api_token",
+      "xchat.adminConnection",
+    ]);
+    await loginAsVendorAdminAndOpenAdmin(page, "API Connection");
   });
 
   test("keeps protected tabs disabled before a connection is established", async ({
@@ -64,7 +58,7 @@ test.describe("Admin API connection", () => {
     ).toBeEnabled();
 
     await page.reload();
-    await page.getByRole("tab", { name: "API Connection" }).click();
+    await openAdminConsole(page, "API Connection");
 
     await expect(page.getByText("Status: Connected")).toBeVisible();
     await expect(
