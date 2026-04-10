@@ -1,3 +1,13 @@
+CREATE OR REPLACE FUNCTION public.current_member_email()
+RETURNS text
+LANGUAGE plpgsql
+STABLE
+AS $$
+BEGIN
+  RETURN lower(COALESCE(auth.jwt() ->> 'email', ''));
+END;
+$$;
+
 -- ============================================
 -- View for Supply Filtering
 -- Always up-to-date view for supply table with aggregated element data
