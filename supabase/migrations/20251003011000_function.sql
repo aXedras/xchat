@@ -590,19 +590,14 @@ RETURNS TABLE (
   name TEXT,
   atomic_number INTEGER
 ) 
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 AS $$
+BEGIN
+  RETURN QUERY
   SELECT DISTINCT e.id, e.symbol, e.name, e.atomic_number
   FROM elements e
   INNER JOIN supply_elements se ON e.id = se.element_id
   ORDER BY e.atomic_number;
-$$;;
-
-CREATE OR REPLACE FUNCTION public.current_member_email()
-RETURNS text
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT lower(COALESCE(auth.jwt() ->> 'email', ''))
+END;
 $$;

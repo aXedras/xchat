@@ -1,0 +1,64 @@
+name: Windows Deploy Bundle
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+    paths:
+      - docker-compose.windows.yml
+      - .env.windows.example
+      - .env.windows.supabase.example
+      - scripts/windows/**
+      - scripts/package-windows-deploy-bundle.sh
+      - .github/workflows/windows-deploy-bundle.yml
+      - README.md
+  pull_request:
+    branches: [main]
+    paths:
+      - docker-compose.windows.yml
+      - .env.windows.example
+      - .env.windows.supabase.example
+      - scripts/windows/**
+      - scripts/package-windows-deploy-bundle.sh
+      - .github/workflows/windows-deploy-bundle.yml
+      - README.md
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Windows deployment bundle
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            BUNDLE_VERSION="${{ github.event.release.tag_name }}" sh ./scripts/package-windows-deploy-bundle.sh
+            echo "bundle_path=dist/xchat-deploy-${{ github.event.release.tag_name }}.zip" >> "$GITHUB_OUTPUT"
+          else
+            sh ./scripts/package-windows-deploy-bundle.sh
+            echo "bundle_path=dist/xchat-deploy.zip" >> "$GITHUB_OUTPUT"
+          fi
+        id: bundle
+
+      - name: Upload Windows deployment bundle
+        if: github.event_name != 'release' && github.actor != 'nektos/act'
+        uses: actions/upload-artifact@v4
+        with:
+          name: xchat-deploy
+          path: |
+            ${{ steps.bundle.outputs.bundle_path }}
+          if-no-files-found: error
+
+      - name: Attach Windows deployment bundle to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.bundle.outputs.bundle_path }}
+          fail_on_unmatched_files: true

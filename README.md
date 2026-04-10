@@ -90,6 +90,87 @@ Or with Docker Compose on the VM:
 docker compose -f docker-compose.ghcr.yml up -d
 ```
 
+### Windows VM Deployment Bundle
+
+If you want to deploy on a Windows VM without a full repository checkout, copy only these files to the VM:
+
+- `docker-compose.windows.yml`
+- `.env.windows.example`
+- `scripts/windows/install.ps1`
+- `scripts/windows/update.ps1`
+
+The bundle supports two runtime modes:
+
+- Local demo mode without Supabase
+- External Supabase mode with runtime environment variables only
+
+Fastest one-off start with `docker run`:
+
+```powershell
+docker pull ghcr.io/marcopersi/xchat:latest
+docker run -d --name xchat -p 8080:8080 ghcr.io/marcopersi/xchat:latest
+```
+
+Repeatable Windows VM setup with `docker compose`:
+
+```powershell
+./scripts/windows/install.ps1 -Template mock
+```
+
+For external Supabase mode, start from the dedicated template instead:
+
+```powershell
+./scripts/windows/install.ps1 -Template supabase
+```
+
+The installer only creates `.env.windows` automatically when it does not exist yet. Once the file exists, your local edits are preserved across repeated runs.
+
+The compose bundle now supports `XCHAT_IMAGE_TAG`, which defaults to `latest` and can be pinned to a release tag such as `v1.2.3`.
+
+If you want a ready-to-copy ZIP instead of manually collecting the files, build it locally with:
+
+```sh
+sh ./scripts/package-windows-deploy-bundle.sh
+```
+
+This creates `dist/xchat-deploy.zip`.
+
+To build a versioned ZIP locally, pass a bundle version:
+
+```sh
+BUNDLE_VERSION=v1.2.3 sh ./scripts/package-windows-deploy-bundle.sh
+```
+
+This creates `dist/xchat-deploy-v1.2.3.zip`.
+
+The ZIP now contains `install-instructions.txt`, `.env.windows.example`, and `.env.windows.supabase.example` for VM admins.
+
+The default `.env.windows.example` starts the app in mock/local mode, so no Supabase instance is required.
+
+If you prefer to create the file manually, external Supabase mode requires:
+
+```env
+XCHAT_IMAGE_TAG=v1.2.3
+XCHAT_API_MODE=real
+XCHAT_PERSISTENCE_PROVIDER=supabase
+XCHAT_REALTIME_CARRIER=supabase
+XCHAT_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+XCHAT_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
+XCHAT_SUPABASE_AUTH_REDIRECT_URL=http://YOUR_VM_HOST:8080
+```
+
+To update the Windows VM later without touching the configuration file:
+
+```powershell
+./scripts/windows/update.ps1
+```
+
+GitHub Actions also publishes the same ZIP as the `xchat-deploy` artifact via the `Windows Deploy Bundle` workflow.
+
+When you publish a GitHub Release, the same workflow also attaches the ZIP directly to the Release assets.
+
+The release flow also publishes a matching GHCR image tag, so a Release `v1.2.3` yields both `ghcr.io/marcopersi/xchat:v1.2.3` and a bundle ZIP with the same version suffix.
+
 Runtime notes:
 
 - The container writes a `runtime-config.js` file at startup so the pulled image can be configured without rebuilding.

@@ -1,0 +1,10 @@
+services:
+  xchat:
+    image: ghcr.io/marcopersi/xchat:${XCHAT_IMAGE_TAG:-latest}
+    container_name: xchat
+    restart: unless-stopped
+    pull_policy: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.windows

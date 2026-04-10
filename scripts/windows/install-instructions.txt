@@ -1,0 +1,37 @@
+xChat Windows VM deployment bundle
+
+Files in this bundle
+- docker-compose.windows.yml
+- .env.windows.example
+- .env.windows.supabase.example
+- scripts/windows/install.ps1
+- scripts/windows/update.ps1
+
+Recommended setup
+1. Extract this ZIP into a working directory on the VM.
+2. Run scripts/windows/install.ps1 from the bundle root.
+3. Review admin credentials, image tag, and backend mode in .env.windows.
+4. Open http://localhost:8080 in a browser.
+
+Default mode
+- XCHAT_IMAGE_TAG=latest
+- XCHAT_API_MODE=mock
+- XCHAT_PERSISTENCE_PROVIDER=local
+- XCHAT_REALTIME_CARRIER=local
+
+This default mode does not require Supabase.
+
+Templates
+- Run scripts/windows/install.ps1 -Template mock for mock/local mode.
+- Run scripts/windows/install.ps1 -Template supabase for external Supabase mode.
+
+External Supabase mode
+The installer copies .env.windows.supabase.example to .env.windows if that file does not exist yet.
+Fill the Supabase values before exposing the VM.
+
+Update procedure
+Run scripts/windows/update.ps1 from the bundle root.
+
+Operational note
+Using ghcr.io/marcopersi/xchat:latest is convenient for quick tests, but it is not immutable.
+For controlled environments, set XCHAT_IMAGE_TAG to a GitHub Release tag or commit-specific image tag.
