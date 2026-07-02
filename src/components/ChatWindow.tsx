@@ -4,7 +4,7 @@ import { Chat, Message, QuoteRequest, QuoteResponse, TradeDeal } from "@/types/c
 import MessageInput from "@/components/MessageInput";
 import ChatHeader from "./chat/ChatHeader";
 import MessageList from "./chat/MessageList";
-import AskContextPanel from "./chat/AskContextPanel";
+import SidePanelContainer from "./chat/SidePanelContainer";
 import { isQuoteRequestMacro } from "@/utils/askMacro";
 import { resolveQuoteRequest } from "@/utils/quoteRequest";
 
@@ -56,18 +56,17 @@ const ChatWindow = ({ chat, messages, quoteRequestsById, quoteResponsesByRequest
             onConvertQuoteResponseToDeal={(requestId, responseId) => onConvertQuoteResponseToDeal?.(chat.id, requestId, responseId)}
           />
         </div>
-        {activeAskMessage && activeQuoteRequest && (
-          <AskContextPanel
-            quoteRequest={activeQuoteRequest}
-            responses={quoteResponsesByRequest?.[activeQuoteRequest.id]}
-            deals={tradeDealsByRequest?.[activeQuoteRequest.id]}
-            insight={counterpartyInsight}
-            onRespond={(requestId) => onRespondToQuoteRequest?.(chat.id, requestId)}
-            onCounterResponse={(requestId, responseId) => onCounterQuoteResponse?.(chat.id, requestId, responseId)}
-            onRejectResponse={(requestId, responseId) => onRejectQuoteResponse?.(chat.id, requestId, responseId)}
-            onConvertToDeal={(requestId, responseId) => onConvertQuoteResponseToDeal?.(chat.id, requestId, responseId)}
-          />
-        )}
+        <SidePanelContainer
+          chatId={chat.id}
+          insight={counterpartyInsight}
+          quoteRequest={activeQuoteRequest}
+          responses={activeQuoteRequest ? quoteResponsesByRequest?.[activeQuoteRequest.id] : undefined}
+          deals={activeQuoteRequest ? tradeDealsByRequest?.[activeQuoteRequest.id] : undefined}
+          onRespond={(requestId) => onRespondToQuoteRequest?.(chat.id, requestId)}
+          onCounterResponse={(requestId, responseId) => onCounterQuoteResponse?.(chat.id, requestId, responseId)}
+          onRejectResponse={(requestId, responseId) => onRejectQuoteResponse?.(chat.id, requestId, responseId)}
+          onConvertToDeal={(requestId, responseId) => onConvertQuoteResponseToDeal?.(chat.id, requestId, responseId)}
+        />
       </div>
       <MessageInput chatId={chat.id} onSendMessage={handleSendMessage} />
     </div>

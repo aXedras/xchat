@@ -28,6 +28,7 @@ xChat evolves from a professional chat product into a trading and operations pla
 - Introduce inventory reservation or soft-allocation during active RFQs to reduce double-selling risk.
 - Show available quantity, asset identifiers, location, delivery readiness, and ownership constraints in the trading workflow.
 - Support different precious metals product classes, units, and packaging forms.
+- **Context-Aware Side Panels**: Tab-based right panel in ChatWindow with Customer View (CRM/Kundenbuch with chronological transaction + chat-summary timeline) and Inventory View (trader cockpit with positions, inflows, outflows). See [bauplan-side-panels.md](bauplan-side-panels.md) for detailed specification.
 
 ### 3. Professional Participant Zone
 

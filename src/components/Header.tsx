@@ -48,9 +48,7 @@ const Header = () => {
           className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={handleLogoClick}
         >
-          <div className="h-8 w-8 rounded-full bg-gradient-to-r from-gold-dark to-platinum flex items-center justify-center">
-            <span className="text-sm font-bold text-white">xC</span>
-          </div>
+          <img src="/xChat.png" alt="xChat" className="h-8 w-8 rounded-full object-cover" />
           <span className="font-semibold text-lg text-primary-foreground">
             xChat
           </span>

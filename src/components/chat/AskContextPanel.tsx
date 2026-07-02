@@ -73,9 +73,8 @@ const AskContextPanel = ({ quoteRequest, responses = [], deals = [], insight, on
   }[countdown.requestStatus];
 
   return (
-    <aside className="border-t border-border bg-background xl:w-96 xl:border-l xl:border-t-0">
-      <ScrollArea className="h-full max-h-[28rem] xl:max-h-none">
-        <div className="space-y-4 p-4">
+    <ScrollArea className="h-full max-h-[28rem] xl:max-h-none">
+      <div className="space-y-4 p-4">
           <Card className="border-primary/20 bg-primary/5 shadow-none">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between gap-3">
@@ -260,7 +259,6 @@ const AskContextPanel = ({ quoteRequest, responses = [], deals = [], insight, on
           <DealHistoryCard deals={insight?.dealHistory ?? []} convertedDeals={convertedDeals} />
         </div>
       </ScrollArea>
-    </aside>
   );
 };
 
