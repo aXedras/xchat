@@ -169,7 +169,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
         with:
-          version: "1.7.1"
+          version: latest
 
       - name: Start local Supabase
         run: supabase start --exclude imgproxy,pooler
