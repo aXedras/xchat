@@ -175,7 +175,9 @@ jobs:
         run: supabase start --exclude imgproxy,pooler
 
       - name: Capture local Supabase connection details
-        run: supabase status -o env >> "$GITHUB_ENV"
+        run: >-
+          supabase status -o json |
+          jq -r 'to_entries[] | "\(.key)=\(.value)"' >> "$GITHUB_ENV"
 
       - name: Reset database (apply migrations)
         run: supabase db reset
@@ -197,19 +199,6 @@ jobs:
           done
           echo "Supabase API gateway did not become ready in time" >&2
           exit 1
-
-      - name: Debug admin API reachability (temporary)
-        env:
-          E2E_SUPABASE_URL: ${{ env.API_URL }}
-          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
-        run: |
-          set +e
-          curl -v -X POST "${E2E_SUPABASE_URL}/auth/v1/admin/users" \
-            -H "apikey: ${E2E_SUPABASE_SERVICE_ROLE_KEY}" \
-            -H "Authorization: Bearer ${E2E_SUPABASE_SERVICE_ROLE_KEY}" \
-            -H "Content-Type: application/json" \
-            -d '{"email":"debug-probe@xchat.test.local","password":"Debug-Test-Pw1","email_confirm":true}'
-          echo "curl exit code: $?"
 
       - name: Provision E2E users
         env:
