@@ -87,6 +87,13 @@ const defaultConfig = {
         import.meta.env.VITE_SUPABASE_AUTH_REDIRECT_URL,
         "http://127.0.0.1:4173",
       ) || "http://127.0.0.1:4173",
+    enableDemoAuth: readBoolean(
+      readValue(
+        runtimeConfig.enableDemoAuth,
+        import.meta.env.VITE_ENABLE_DEMO_AUTH,
+      ),
+      false,
+    ),
     vendorAdmin: {
       email:
         readValue(

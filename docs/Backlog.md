@@ -36,6 +36,7 @@ xChat evolves from a professional chat product into a trading and operations pla
 - Add strong identity, firm affiliation, role-based permissions, and counterparty verification.
 - Add moderation, abuse handling, and policy enforcement suitable for regulated trading relationships.
 - Add message retention, legal hold, and audit requirements for professional communications.
+- **Deactivation flag**: Participants are imported from the Bullion Integrity Ledger into Supabase Auth. A BIL participant who leaves the group must be marked inactive rather than deleted, because the messaging tables reference `auth.users(id)` with `ON DELETE RESTRICT`. Add a deactivation/activation flag and enforce it in `list_participants` and `send_messages`.
 
 ### 4. Fee Rule Engine
 
@@ -156,6 +157,7 @@ xChat evolves from a professional chat product into a trading and operations pla
 - Add observability, error logging, integration health checks, retry handling, and reconciliation jobs.
 - Add test coverage for end-to-end trade lifecycle, fee evaluation, inventory sync, and document generation.
 - Add environment-specific configuration for external integrations and secrets handling.
+- **Guaranteed delivery (currently "persisted = accepted")**: The MVP treats a message as accepted once it is persisted; the Supabase Realtime notification is best-effort. If the enqueue fails, the recipient only sees the message on the next refresh. Later, add a transactional outbox with retry, or a deterministic catch-up after (re)connect, so no persisted message remains invisible to an online recipient.
 
 ## Suggested Sequencing
 

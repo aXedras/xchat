@@ -1,170 +1,94 @@
-import { Dispatch, SetStateAction } from "react";
-import { AddMessageBase, Chat, Message, QuoteRequest, UpdateChatListEntry } from "@/types/chat";
-import { authService } from "@/services/authService";
-import { getCurrentParticipant } from "@/services/chatIdentity";
-import { formatChatTimestamp } from "@/utils/format";
-import { realtimeBus } from "@/services/realtimeBus";
-import { messageRepository } from "@/services/persistence/messageRepository";
+import { Dispatch, SetStateAction, useCallback, useRef } from "react";
+import { Message, MessageType } from "@/types/chat";
+import { messageRepository, MessagingError } from "@/services/persistence/messageRepository";
+import { mapMessageRecordToMessage } from "@/services/persistence/chatConversationRepository";
+import { mergeMessages } from "@/utils/messageUtils";
 
-interface UseOutgoingMessageParams {
-  realtimeOriginId: string;
-  activeChats: Chat[];
-  archivedChats: Chat[];
-  selectedChat: Chat | null;
-  setSelectedChat: Dispatch<SetStateAction<Chat | null>>;
+export interface SendInput {
+  dispatchId?: string;
+  recipientIds: string[];
+  retryRecipientIds?: string[];
+  content: string;
+  messageType?: MessageType;
+  rfqTerms?: Record<string, unknown>;
+}
+
+export interface UseOutgoingMessageParams {
   setMessages: Dispatch<SetStateAction<Record<string, Message[]>>>;
-  setTypingIndicator: (chatId: string, isTyping: boolean) => void;
-  restoreChat: (chatId: string) => void;
-  addMessageBase: AddMessageBase;
-  updateChatListEntry: UpdateChatListEntry;
-  createOutgoingQuoteRequest: (input: {
-    chatId: string;
-    counterpartyName: string;
-    companyName?: string;
-    message: Message;
-  }) => QuoteRequest | undefined;
+  refreshChats: () => Promise<void>;
 }
 
-function scheduleDemoReply(
-  chatId: string,
-  activeChats: Chat[],
-  archivedChats: Chat[],
-  setMessages: Dispatch<SetStateAction<Record<string, Message[]>>>,
-  setTypingIndicator: (chatId: string, isTyping: boolean) => void,
-  updateChatListEntry: (chatId: string, content: string, timestamp: string, createdAt?: string) => void,
-) {
-  setTimeout(() => {
-    setTypingIndicator(chatId, true);
-
-    if (Math.random() <= 0.5) {
-      return;
-    }
-
-    setTimeout(() => {
-      const simulatedResponses = [
-        "I'll look into this and get back to you",
-        "Thanks for the information",
-        "Let me check the details with our team",
-        "I'll prepare the documents you requested",
-      ];
-
-      const response = simulatedResponses[Math.floor(Math.random() * simulatedResponses.length)];
-      const now = new Date();
-      const timestamp = formatChatTimestamp(now);
-      const chatName = [...activeChats, ...archivedChats].find((chat) => chat.id === chatId)?.name || "";
-      const senderName = chatName.split(" - ")[0];
-
-      const newMessage: Message = {
-        id: `sim-${Date.now()}`,
-        content: response,
-        sender: senderName,
-        timestamp,
-        createdAt: now.toISOString(),
-        status: "delivered",
-        isMine: false,
-      };
-
-      setMessages((prev) => ({
-        ...prev,
-        [chatId]: [...(prev[chatId] || []), newMessage],
-      }));
-
-      messageRepository.saveMessage(chatId, newMessage);
-      updateChatListEntry(chatId, response, timestamp);
-      setTypingIndicator(chatId, false);
-    }, 4000);
-  }, 2000);
+function sameRecipientSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((value, index) => value === sortedB[index]);
 }
 
-export function useOutgoingMessage({
-  realtimeOriginId,
-  activeChats,
-  archivedChats,
-  selectedChat,
-  setSelectedChat,
-  setMessages,
-  setTypingIndicator,
-  restoreChat,
-  addMessageBase,
-  updateChatListEntry,
-  createOutgoingQuoteRequest,
-}: Readonly<UseOutgoingMessageParams>) {
-  const addMessage = (chatId: string, content: string) => {
-    setTypingIndicator(chatId, false);
+function samePayload(a: SendInput, b: SendInput): boolean {
+  return (
+    (a.messageType ?? "standard") === (b.messageType ?? "standard") &&
+    a.content === b.content &&
+    sameRecipientSet(a.recipientIds, b.recipientIds) &&
+    JSON.stringify(a.rfqTerms ?? null) === JSON.stringify(b.rfqTerms ?? null)
+  );
+}
 
-    const isArchived = archivedChats.some((chat) => chat.id === chatId);
-    const messageId = `msg-${Date.now()}`;
-    const createdAt = new Date().toISOString();
-    const participant = getCurrentParticipant();
-    const chatName = [...activeChats, ...archivedChats].find((chat) => chat.id === chatId)?.name || "";
-    const counterpartyName = chatName.split(" - ")[0] || chatName || "Counterparty";
-    const companyName = chatName.split(" - ")[1] || undefined;
+export function useOutgoingMessage({ setMessages, refreshChats }: Readonly<UseOutgoingMessageParams>) {
+  const pendingDispatchRef = useRef<{ input: SendInput & { dispatchId: string } } | null>(null);
 
-    const quoteRequest = createOutgoingQuoteRequest({
-      chatId,
-      counterpartyName,
-      companyName,
-      message: {
-        id: messageId,
-        content,
-        sender: participant?.displayName ?? "You",
-        senderEmail: participant?.email,
-        timestamp: "",
-        createdAt,
-        status: "sent",
-        isMine: true,
-      },
-    });
+  const send = useCallback(
+    async (input: SendInput) => {
+      const isExplicitRetry = typeof input.dispatchId === "string";
 
-    addMessageBase(chatId, content, isArchived, restoreChat, updateChatListEntry, {
-      id: messageId,
-      createdAt,
-      quoteRequestId: quoteRequest?.id,
-    });
-
-    const message: Message = {
-      id: messageId,
-      content,
-      sender: participant?.displayName ?? "You",
-      senderEmail: participant?.email,
-      timestamp: formatChatTimestamp(new Date(createdAt)),
-      createdAt,
-      status: "sent",
-      isMine: true,
-      quoteRequestId: quoteRequest?.id,
-    };
-
-    realtimeBus.publish({
-      originId: realtimeOriginId,
-      type: "message.upsert",
-      chatId,
-      message,
-    });
-
-    messageRepository.saveMessage(chatId, message);
-
-    if (quoteRequest) {
-      realtimeBus.publish({
-        originId: realtimeOriginId,
-        type: "quote-request.upsert",
-        chatId,
-        quoteRequest,
-      });
-    }
-
-    if (selectedChat?.id === chatId && !activeChats.some((chat) => chat.id === chatId) && !archivedChats.some((chat) => chat.id === chatId)) {
-      const updatedChat = [...activeChats, ...archivedChats].find((chat) => chat.id === chatId);
-      if (updatedChat) {
-        setSelectedChat(updatedChat);
+      let dispatchId: string;
+      if (isExplicitRetry) {
+        dispatchId = input.dispatchId;
+      } else {
+        const pending = pendingDispatchRef.current;
+        if (pending && samePayload(pending.input, input)) {
+          dispatchId = pending.input.dispatchId;
+        } else {
+          dispatchId = crypto.randomUUID();
+        }
+        pendingDispatchRef.current = { input: { ...input, dispatchId } };
       }
-    }
 
-    if (authService.getAppIdentity()?.mode !== "demo") {
-      return;
-    }
+      try {
+        const result = await messageRepository.sendMessages({
+          dispatchId,
+          messageType: input.messageType ?? "standard",
+          content: input.content,
+          recipientIds: input.recipientIds,
+          rfqTerms: input.rfqTerms,
+          retryRecipientIds: input.retryRecipientIds,
+        });
 
-    scheduleDemoReply(chatId, activeChats, archivedChats, setMessages, setTypingIndicator, updateChatListEntry);
-  };
+        if (!isExplicitRetry) {
+          pendingDispatchRef.current = null;
+        }
 
-  return { addMessage };
+        result.dispatch.messages.forEach(({ message }) => {
+          const mapped = mapMessageRecordToMessage(message);
+          setMessages((previous) => ({
+            ...previous,
+            [message.conversationId]: mergeMessages(previous[message.conversationId] ?? [], [mapped]),
+          }));
+        });
+
+        void refreshChats();
+        return result;
+      } catch (error) {
+        if (!isExplicitRetry && !(error instanceof MessagingError && error.retryable)) {
+          pendingDispatchRef.current = null;
+        }
+        throw error;
+      }
+    },
+    [setMessages, refreshChats],
+  );
+
+  return { send };
 }

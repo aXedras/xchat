@@ -146,21 +146,30 @@ CREATE INDEX IF NOT EXISTS idx_auto_prediction_jobs_created_at
 CREATE INDEX IF NOT EXISTS idx_auto_prediction_jobs_status 
   ON public.auto_prediction_jobs(status);
 
-CREATE INDEX IF NOT EXISTS idx_chat_conversations_last_message_at
-  ON public.chat_conversations(last_message_at DESC NULLS LAST);
-CREATE INDEX IF NOT EXISTS idx_chat_conversation_members_member_email
-  ON public.chat_conversation_members(member_email);
-CREATE INDEX IF NOT EXISTS idx_chat_messages_chat_id_created_at
-  ON public.chat_messages(chat_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_chat_messages_sender_email_created_at
-  ON public.chat_messages(sender_email, created_at);
-CREATE INDEX IF NOT EXISTS idx_quote_requests_chat_id_created_at
-  ON public.quote_requests(chat_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_quote_requests_requested_by_email_created_at
-  ON public.quote_requests(requested_by_email, created_at);
-CREATE INDEX IF NOT EXISTS idx_quote_responses_request_id_version
-  ON public.quote_responses(request_id, version);
-CREATE INDEX IF NOT EXISTS idx_quote_responses_responder_email_created_at
-  ON public.quote_responses(responder_email, created_at);
-CREATE INDEX IF NOT EXISTS idx_trade_deals_request_id_created_at
-  ON public.trade_deals(request_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_conversations_participant_high
+  ON public.conversations(participant_high_user_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_last_message_at
+  ON public.conversations(last_message_at DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_cursor
+  ON public.messages(conversation_id, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_sender_created_at
+  ON public.messages(sender_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_recipient_created_at
+  ON public.messages(recipient_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_message_dispatch_sender_created_at
+  ON public.message_dispatch(sender_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_dispatch_recipient_dispatch
+  ON public.message_dispatch_recipient(dispatch_id);
+CREATE INDEX IF NOT EXISTS idx_quote_requests_owner_created_at
+  ON public.quote_requests(owner_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_quote_invitations_request
+  ON public.quote_request_invitations(request_id);
+CREATE INDEX IF NOT EXISTS idx_quote_invitations_recipient
+  ON public.quote_request_invitations(recipient_user_id);
+CREATE INDEX IF NOT EXISTS idx_quote_responses_invitation_cursor
+  ON public.quote_responses(invitation_id, created_at ASC, id ASC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_quote_responses_single_root
+  ON public.quote_responses(invitation_id)
+  WHERE parent_response_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_trade_deals_request
+  ON public.trade_deals(request_id);

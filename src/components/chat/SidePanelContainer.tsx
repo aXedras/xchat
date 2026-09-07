@@ -1,81 +1,125 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CounterpartyInsight, QuoteRequest, QuoteResponse, TradeDeal } from "@/types/chat";
-import AskContextPanel from "./AskContextPanel";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+import { Chat, QuoteInvitationRecord, QuoteResponseRecord } from "@/types/chat";
 import CustomerView from "./CustomerView";
 import InventoryView from "./InventoryView";
-import { BookUser, ClipboardList, Warehouse } from "lucide-react";
+import RfqPanel from "./RfqPanel";
+
+type TabId = "customer" | "rfq" | "inventory";
 
 interface SidePanelContainerProps {
-  chatId: string;
-  insight?: CounterpartyInsight;
-  quoteRequest?: QuoteRequest;
-  responses?: QuoteResponse[];
-  deals?: TradeDeal[];
-  onRespond?: (requestId: string) => void;
-  onCounterResponse?: (requestId: string, responseId: string) => void;
-  onRejectResponse?: (requestId: string, responseId: string) => void;
-  onConvertToDeal?: (requestId: string, responseId: string) => void;
+  chat: Chat;
+  currentUserId: string | null;
+  invitations: QuoteInvitationRecord[];
+  responses: Record<string, QuoteResponseRecord[]>;
+  busy: boolean;
+  onLoadResponses: (invitationId: string) => void;
+  onSubmitQuote: (
+    invitationId: string,
+    premium: string,
+    notes?: string | null,
+  ) => Promise<unknown>;
+  onCounterQuote: (
+    invitationId: string,
+    parentResponseId: string,
+    premium: string,
+    notes?: string | null,
+  ) => Promise<unknown>;
+  onRejectQuote: (invitationId: string, responseId: string) => Promise<unknown>;
+  onBookQuote: (invitationId: string, responseId: string) => Promise<unknown>;
 }
 
 const SidePanelContainer = ({
-  chatId,
-  insight,
-  quoteRequest,
+  chat,
+  currentUserId,
+  invitations,
   responses,
-  deals,
-  onRespond,
-  onCounterResponse,
-  onRejectResponse,
-  onConvertToDeal,
+  busy,
+  onLoadResponses,
+  onSubmitQuote,
+  onCounterQuote,
+  onRejectQuote,
+  onBookQuote,
 }: SidePanelContainerProps) => {
-  const hasActiveRfq = !!quoteRequest;
-  const defaultTab = hasActiveRfq ? "rfq" : "customer";
+  const hasRfq = invitations.length > 0;
+  const [activeTab, setActiveTab] = useState<TabId>(
+    hasRfq ? "rfq" : "customer",
+  );
+  const prevChatIdRef = useRef(chat.id);
+  const prevHasRfqRef = useRef(hasRfq);
+
+  useEffect(() => {
+    const prevChatId = prevChatIdRef.current;
+    const prevHasRfq = prevHasRfqRef.current;
+    prevChatIdRef.current = chat.id;
+    prevHasRfqRef.current = hasRfq;
+
+    if (chat.id !== prevChatId) {
+      // Chat switch: always fall back to the context-appropriate default tab.
+      setActiveTab(hasRfq ? "rfq" : "customer");
+      return;
+    }
+    if (hasRfq && !prevHasRfq) {
+      // RFQ newly available in the same chat: surface it by default.
+      setActiveTab("rfq");
+      return;
+    }
+    if (!hasRfq && prevHasRfq) {
+      // RFQ context disappeared: rfq/inventory tabs are no longer visible.
+      setActiveTab("customer");
+    }
+  }, [chat.id, hasRfq]);
+
+  const tabs: Array<{ id: TabId; label: string; visible: boolean }> = [
+    { id: "customer", label: "Customer", visible: true },
+    { id: "rfq", label: "RFQ Context", visible: hasRfq },
+    { id: "inventory", label: "Inventory", visible: hasRfq },
+  ];
 
   return (
-    <aside className="flex flex-col border-t border-border bg-background xl:w-96 xl:border-l xl:border-t-0">
-      <Tabs defaultValue={defaultTab} className="flex h-full flex-col">
-        <TabsList className="mx-4 mt-3 shrink-0">
-          <TabsTrigger value="customer" className="gap-1.5">
-            <BookUser className="h-3.5 w-3.5" />
-            Customer
-          </TabsTrigger>
-          {hasActiveRfq && (
-            <>
-              <TabsTrigger value="rfq" className="gap-1.5">
-                <ClipboardList className="h-3.5 w-3.5" />
-                RFQ
-              </TabsTrigger>
-              <TabsTrigger value="inventory" className="gap-1.5">
-                <Warehouse className="h-3.5 w-3.5" />
-                Inventory
-              </TabsTrigger>
-            </>
-          )}
-        </TabsList>
-        <TabsContent value="customer" className="mt-0 min-h-0 flex-1">
-          <CustomerView chatId={chatId} insight={insight} />
-        </TabsContent>
-        {hasActiveRfq && (
-          <>
-            <TabsContent value="rfq" className="mt-0 min-h-0 flex-1">
-              <AskContextPanel
-                quoteRequest={quoteRequest}
-                responses={responses}
-                deals={deals}
-                insight={insight}
-                onRespond={onRespond}
-                onCounterResponse={onCounterResponse}
-                onRejectResponse={onRejectResponse}
-                onConvertToDeal={onConvertToDeal}
-              />
-            </TabsContent>
-            <TabsContent value="inventory" className="mt-0 min-h-0 flex-1">
-              <InventoryView />
-            </TabsContent>
-          </>
-        )}
-      </Tabs>
-    </aside>
+    <div className="border-l border-border flex flex-col w-full xl:w-96 min-h-0">
+      <div className="flex border-b border-border">
+        {tabs
+          .filter((tab) => tab.visible)
+          .map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "px-3 py-2 text-sm transition-colors",
+                activeTab === tab.id
+                  ? "border-b-2 border-primary font-medium text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {activeTab === "customer" && <CustomerView chat={chat} />}
+        {activeTab === "inventory" && <InventoryView />}
+        {activeTab === "rfq" &&
+          invitations.map((invitation) => (
+            <RfqPanel
+              key={invitation.id}
+              invitation={invitation}
+              responses={responses[invitation.id] ?? []}
+              isOwner={
+                !!currentUserId && invitation.ownerUserId === currentUserId
+              }
+              busy={busy}
+              onLoadResponses={onLoadResponses}
+              onSubmitQuote={onSubmitQuote}
+              onCounterQuote={onCounterQuote}
+              onRejectQuote={onRejectQuote}
+              onBookQuote={onBookQuote}
+            />
+          ))}
+      </div>
+    </div>
   );
 };
 

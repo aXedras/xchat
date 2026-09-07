@@ -28,18 +28,26 @@ ALTER TABLE public.permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.role_permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.country ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.auto_prediction_jobs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.chat_conversations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.chat_conversation_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.message_dispatch ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.message_dispatch_recipient ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.quote_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quote_request_invitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.quote_responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quote_response_decisions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trade_deals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quote_workflow_idempotency ENABLE ROW LEVEL SECURITY;
 -- Create simple authenticated access policies for all tables
 -- Note: No DROP statements needed as this is a clean migration
-CREATE POLICY "Authenticated full access" ON public.profile
-  FOR ALL USING (auth.uid() IS NOT NULL);
-CREATE POLICY "Authenticated full access" ON public.user_roles
-  FOR ALL USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can read profiles" ON public.profile
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can update own profile" ON public.profile
+  FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can insert own profile" ON public.profile
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can read own role" ON public.user_roles
+  FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Authenticated full access" ON public.origins
   FOR ALL USING (auth.uid() IS NOT NULL);
 CREATE POLICY "Authenticated full access" ON public.elements
@@ -129,261 +137,88 @@ CREATE POLICY "Service role can manage auto prediction jobs"
   USING (true)
   WITH CHECK (true);
 
-CREATE POLICY "Authenticated members can read chat conversations"
-  ON public.chat_conversations
+-- Closed-Group Messaging RLS (M6)
+CREATE POLICY "Conversation participants can read"
+  ON public.conversations
+  FOR SELECT
+  TO authenticated
+  USING (auth.uid() IN (participant_low_user_id, participant_high_user_id));
+
+CREATE POLICY "Message participants can read"
+  ON public.messages
+  FOR SELECT
+  TO authenticated
+  USING (auth.uid() IN (sender_user_id, recipient_user_id));
+
+CREATE POLICY "Dispatch sender can read"
+  ON public.message_dispatch
+  FOR SELECT
+  TO authenticated
+  USING (sender_user_id = auth.uid());
+
+CREATE POLICY "Dispatch sender can read recipients"
+  ON public.message_dispatch_recipient
   FOR SELECT
   TO authenticated
   USING (
     EXISTS (
       SELECT 1
-      FROM public.chat_conversation_members members
-      WHERE members.conversation_id = chat_conversations.id
-        AND lower(members.member_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated owners can insert chat conversations"
-  ON public.chat_conversations
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (lower(created_by_email) = public.current_member_email());
-CREATE POLICY "Authenticated owners can update chat conversations"
-  ON public.chat_conversations
-  FOR UPDATE
-  TO authenticated
-  USING (lower(created_by_email) = public.current_member_email())
-  WITH CHECK (lower(created_by_email) = public.current_member_email());
-CREATE POLICY "Authenticated owners can delete chat conversations"
-  ON public.chat_conversations
-  FOR DELETE
-  TO authenticated
-  USING (lower(created_by_email) = public.current_member_email());
-
-CREATE POLICY "Authenticated members can read chat conversation members"
-  ON public.chat_conversation_members
-  FOR SELECT
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM public.chat_conversation_members viewer
-      WHERE viewer.conversation_id = chat_conversation_members.conversation_id
-        AND lower(viewer.member_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated owners can insert chat conversation members"
-  ON public.chat_conversation_members
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1
-      FROM public.chat_conversations conversations
-      WHERE conversations.id = chat_conversation_members.conversation_id
-        AND lower(conversations.created_by_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated owners can update chat conversation members"
-  ON public.chat_conversation_members
-  FOR UPDATE
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM public.chat_conversations conversations
-      WHERE conversations.id = chat_conversation_members.conversation_id
-        AND lower(conversations.created_by_email) = public.current_member_email()
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1
-      FROM public.chat_conversations conversations
-      WHERE conversations.id = chat_conversation_members.conversation_id
-        AND lower(conversations.created_by_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated owners can delete chat conversation members"
-  ON public.chat_conversation_members
-  FOR DELETE
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM public.chat_conversations conversations
-      WHERE conversations.id = chat_conversation_members.conversation_id
-        AND lower(conversations.created_by_email) = public.current_member_email()
+      FROM public.message_dispatch d
+      WHERE d.id = dispatch_id
+        AND d.sender_user_id = auth.uid()
     )
   );
 
-CREATE POLICY "Authenticated members can read chat messages"
-  ON public.chat_messages
-  FOR SELECT
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM public.chat_conversation_members members
-      WHERE members.conversation_id = chat_messages.chat_id
-        AND lower(members.member_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated members can insert own chat messages"
-  ON public.chat_messages
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    lower(sender_email) = public.current_member_email()
-    AND EXISTS (
-      SELECT 1
-      FROM public.chat_conversation_members members
-      WHERE members.conversation_id = chat_messages.chat_id
-        AND lower(members.member_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated senders can update own chat messages"
-  ON public.chat_messages
-  FOR UPDATE
-  TO authenticated
-  USING (lower(sender_email) = public.current_member_email())
-  WITH CHECK (lower(sender_email) = public.current_member_email());
-CREATE POLICY "Authenticated senders can delete own chat messages"
-  ON public.chat_messages
-  FOR DELETE
-  TO authenticated
-  USING (lower(sender_email) = public.current_member_email());
-
-CREATE POLICY "Authenticated members can read quote requests"
+-- RFQ Aggregate RLS (M8)
+CREATE POLICY "RFQ owner can read"
   ON public.quote_requests
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM public.chat_conversation_members members
-      WHERE members.conversation_id = quote_requests.chat_id
-        AND lower(members.member_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated members can insert own quote requests"
-  ON public.quote_requests
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    lower(requested_by_email) = public.current_member_email()
-    AND EXISTS (
-      SELECT 1
-      FROM public.chat_conversation_members members
-      WHERE members.conversation_id = quote_requests.chat_id
-        AND lower(members.member_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated requesters can update own quote requests"
-  ON public.quote_requests
-  FOR UPDATE
-  TO authenticated
-  USING (lower(requested_by_email) = public.current_member_email())
-  WITH CHECK (lower(requested_by_email) = public.current_member_email());
-CREATE POLICY "Authenticated requesters can delete own quote requests"
-  ON public.quote_requests
-  FOR DELETE
-  TO authenticated
-  USING (lower(requested_by_email) = public.current_member_email());
+  USING (owner_user_id = auth.uid());
 
-CREATE POLICY "Authenticated members can read quote responses"
+CREATE POLICY "RFQ owner or recipient can read invitations"
+  ON public.quote_request_invitations
+  FOR SELECT
+  TO authenticated
+  USING (
+    recipient_user_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM public.quote_requests q
+      WHERE q.id = request_id AND q.owner_user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "RFQ owner or recipient can read responses"
   ON public.quote_responses
   FOR SELECT
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1
-      FROM public.quote_requests requests
-      JOIN public.chat_conversation_members members ON members.conversation_id = requests.chat_id
-      WHERE requests.id = quote_responses.request_id
-        AND lower(members.member_email) = public.current_member_email()
+      SELECT 1 FROM public.quote_request_invitations i
+      WHERE i.id = invitation_id
+        AND (
+          i.recipient_user_id = auth.uid()
+          OR EXISTS (
+            SELECT 1 FROM public.quote_requests q
+            WHERE q.id = i.request_id AND q.owner_user_id = auth.uid()
+          )
+        )
     )
   );
-CREATE POLICY "Authenticated members can insert own quote responses"
-  ON public.quote_responses
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    lower(responder_email) = public.current_member_email()
-    AND EXISTS (
-      SELECT 1
-      FROM public.quote_requests requests
-      JOIN public.chat_conversation_members members ON members.conversation_id = requests.chat_id
-      WHERE requests.id = quote_responses.request_id
-        AND lower(members.member_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated responders can update own quote responses"
-  ON public.quote_responses
-  FOR UPDATE
-  TO authenticated
-  USING (lower(responder_email) = public.current_member_email())
-  WITH CHECK (
-    lower(responder_email) = public.current_member_email()
-    AND EXISTS (
-      SELECT 1
-      FROM public.quote_requests requests
-      JOIN public.chat_conversation_members members ON members.conversation_id = requests.chat_id
-      WHERE requests.id = quote_responses.request_id
-        AND lower(members.member_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated responders can delete own quote responses"
-  ON public.quote_responses
-  FOR DELETE
-  TO authenticated
-  USING (lower(responder_email) = public.current_member_email());
 
-CREATE POLICY "Authenticated members can read trade deals"
+CREATE POLICY "Deal parties can read"
   ON public.trade_deals
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM public.quote_requests requests
-      JOIN public.chat_conversation_members members ON members.conversation_id = requests.chat_id
-      WHERE requests.id = trade_deals.request_id
-        AND lower(members.member_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated members can insert trade deals"
-  ON public.trade_deals
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1
-      FROM public.quote_requests requests
-      JOIN public.chat_conversation_members members ON members.conversation_id = requests.chat_id
-      WHERE requests.id = trade_deals.request_id
-        AND lower(members.member_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated bookers can update trade deals"
-  ON public.trade_deals
-  FOR UPDATE
+  USING (counterparty_user_id = auth.uid() OR booked_by_user_id = auth.uid());
+
+-- Realtime Broadcast authorization (M10): clients may only receive the
+-- broadcast topic that belongs to their own user id.
+CREATE POLICY "Users can receive own user-topic broadcasts"
+  ON realtime.messages
+  FOR SELECT
   TO authenticated
   USING (
-    COALESCE(lower(booked_by_email), public.current_member_email()) = public.current_member_email()
-  )
-  WITH CHECK (
-    COALESCE(lower(booked_by_email), public.current_member_email()) = public.current_member_email()
-    AND EXISTS (
-      SELECT 1
-      FROM public.quote_requests requests
-      JOIN public.chat_conversation_members members ON members.conversation_id = requests.chat_id
-      WHERE requests.id = trade_deals.request_id
-        AND lower(members.member_email) = public.current_member_email()
-    )
-  );
-CREATE POLICY "Authenticated bookers can delete trade deals"
-  ON public.trade_deals
-  FOR DELETE
-  TO authenticated
-  USING (
-    COALESCE(lower(booked_by_email), public.current_member_email()) = public.current_member_email()
+    realtime.messages.extension = 'broadcast'
+    AND realtime.topic() = 'user:' || auth.uid()::text
   );

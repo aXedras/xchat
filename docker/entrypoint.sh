@@ -19,6 +19,7 @@ window.__XCHAT_RUNTIME_CONFIG__ = {
   supabasePublishableKey: $(quote_js "${XCHAT_SUPABASE_PUBLISHABLE_KEY:-}"),
   supabaseRedirectUrl: $(quote_js "${XCHAT_SUPABASE_AUTH_REDIRECT_URL:-}"),
   persistenceProvider: $(quote_js "${XCHAT_PERSISTENCE_PROVIDER:-}"),
+  enableDemoAuth: $(quote_js "${XCHAT_ENABLE_DEMO_AUTH:-false}"),
   demoEmail: $(quote_js "${XCHAT_DEMO_EMAIL:-demo@axedras.com}"),
   demoPassword: $(quote_js "${XCHAT_DEMO_PASSWORD:-password}"),
   vendorAdminEmail: $(quote_js "${XCHAT_VENDOR_ADMIN_EMAIL:-admin@xchat.local}"),

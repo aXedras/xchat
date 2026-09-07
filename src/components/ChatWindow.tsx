@@ -1,74 +1,67 @@
-
-import { counterpartyInsights } from "@/data/mockChats";
-import { Chat, Message, QuoteRequest, QuoteResponse, TradeDeal } from "@/types/chat";
+import { Chat, Message, QuoteInvitationRecord, QuoteResponseRecord } from "@/types/chat";
 import MessageInput from "@/components/MessageInput";
 import ChatHeader from "./chat/ChatHeader";
 import MessageList from "./chat/MessageList";
 import SidePanelContainer from "./chat/SidePanelContainer";
-import { isQuoteRequestMacro } from "@/utils/askMacro";
-import { resolveQuoteRequest } from "@/utils/quoteRequest";
+import { getCurrentParticipant } from "@/services/chatIdentity";
 
 interface ChatWindowProps {
   chat: Chat;
   messages: Message[];
-  quoteRequestsById?: Record<string, QuoteRequest>;
-  quoteResponsesByRequest?: Record<string, QuoteResponse[]>;
-  tradeDealsByRequest?: Record<string, TradeDeal[]>;
-  onSendMessage?: (chatId: string, content: string) => void;
-  onRespondToQuoteRequest?: (chatId: string, requestId: string) => void;
-  onCounterQuoteResponse?: (chatId: string, requestId: string, responseId: string) => void;
-  onRejectQuoteResponse?: (chatId: string, requestId: string, responseId: string) => void;
-  onConvertQuoteResponseToDeal?: (chatId: string, requestId: string, responseId: string) => void;
-  isTyping?: boolean;
+  sending: boolean;
+  error: string | null;
+  invitations: QuoteInvitationRecord[];
+  responses: Record<string, QuoteResponseRecord[]>;
+  onSendMessage: (content: string) => Promise<boolean> | boolean;
+  onLoadResponses: (invitationId: string) => Promise<void>;
+  onSubmitQuote: (invitationId: string, premium: string, notes?: string | null) => Promise<unknown>;
+  onCounterQuote: (invitationId: string, parentResponseId: string, premium: string, notes?: string | null) => Promise<unknown>;
+  onRejectQuote: (invitationId: string, responseId: string) => Promise<unknown>;
+  onBookQuote: (invitationId: string, responseId: string) => Promise<unknown>;
 }
 
-const ChatWindow = ({ chat, messages, quoteRequestsById, quoteResponsesByRequest, tradeDealsByRequest, onSendMessage, onRespondToQuoteRequest, onCounterQuoteResponse, onRejectQuoteResponse, onConvertQuoteResponseToDeal, isTyping }: ChatWindowProps) => {
-  const counterpartyInsight = counterpartyInsights[chat.id];
-
-  const activeAskMessage = [...messages]
-    .reverse()
-    .find((message) => !message.isMine && isQuoteRequestMacro(message.content));
-
-  const activeQuoteRequest = activeAskMessage
-    ? resolveQuoteRequest(activeAskMessage, chat.id, quoteRequestsById, counterpartyInsight?.company)
-    : undefined;
-
-  const handleSendMessage = (content: string) => {
-    if (onSendMessage) {
-      onSendMessage(chat.id, content);
-    }
-  };
+const ChatWindow = ({
+  chat,
+  messages,
+  sending,
+  error,
+  invitations,
+  responses,
+  onSendMessage,
+  onLoadResponses,
+  onSubmitQuote,
+  onCounterQuote,
+  onRejectQuote,
+  onBookQuote,
+}: ChatWindowProps) => {
+  const currentUserId = getCurrentParticipant()?.userId;
 
   return (
     <div className="flex flex-col h-full">
       <ChatHeader chat={chat} />
-      <div className="flex flex-1 min-h-0 flex-col xl:flex-row">
-        <div className="min-h-0 flex-1">
-          <MessageList 
-            chatId={chat.id}
-            messages={messages} 
-            isTyping={isTyping} 
-            chatName={chat.name} 
-            quoteRequestsById={quoteRequestsById}
-            quoteResponsesByRequest={quoteResponsesByRequest}
-            tradeDealsByRequest={tradeDealsByRequest}
-            onRespondToQuoteRequest={(requestId) => onRespondToQuoteRequest?.(chat.id, requestId)}
-            onConvertQuoteResponseToDeal={(requestId, responseId) => onConvertQuoteResponseToDeal?.(chat.id, requestId, responseId)}
-          />
+      {error && (
+        <div className="mx-4 mt-3 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
+      <div className="flex-1 min-h-0 flex flex-col xl:flex-row">
+        <div className="min-h-0 flex-1 flex flex-col">
+          <MessageList messages={messages} />
+          <MessageInput disabled={sending} onSendMessage={onSendMessage} />
         </div>
         <SidePanelContainer
-          chatId={chat.id}
-          insight={counterpartyInsight}
-          quoteRequest={activeQuoteRequest}
-          responses={activeQuoteRequest ? quoteResponsesByRequest?.[activeQuoteRequest.id] : undefined}
-          deals={activeQuoteRequest ? tradeDealsByRequest?.[activeQuoteRequest.id] : undefined}
-          onRespond={(requestId) => onRespondToQuoteRequest?.(chat.id, requestId)}
-          onCounterResponse={(requestId, responseId) => onCounterQuoteResponse?.(chat.id, requestId, responseId)}
-          onRejectResponse={(requestId, responseId) => onRejectQuoteResponse?.(chat.id, requestId, responseId)}
-          onConvertToDeal={(requestId, responseId) => onConvertQuoteResponseToDeal?.(chat.id, requestId, responseId)}
+          chat={chat}
+          currentUserId={currentUserId}
+          invitations={invitations}
+          responses={responses}
+          busy={sending}
+          onLoadResponses={onLoadResponses}
+          onSubmitQuote={onSubmitQuote}
+          onCounterQuote={onCounterQuote}
+          onRejectQuote={onRejectQuote}
+          onBookQuote={onBookQuote}
         />
       </div>
-      <MessageInput chatId={chat.id} onSendMessage={handleSendMessage} />
     </div>
   );
 };

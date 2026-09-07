@@ -1,173 +1,241 @@
-import config from "@/config/environment";
 import { SupabaseClient } from "@supabase/supabase-js";
-import { getCurrentParticipant, isCurrentParticipantEmail } from "@/services/chatIdentity";
-import { logger } from "@/services/logger";
-import { getSupabaseBrowserClient, hasSupabaseConfig } from "@/services/supabase/client";
-import { Message } from "@/types/chat";
-import { sortMessagesChronologically } from "@/utils/messageUtils";
+import { getSupabaseBrowserClient } from "@/services/supabase/client";
+import {
+  DispatchRecipientRecord,
+  MessageDispatchRecord,
+  MessageRecord,
+  MessagesPage,
+  MessageType,
+  ParticipantRecord,
+  QuoteInvitationRecord,
+  QuoteRequestRecord,
+  QuoteResponseRecord,
+  RfqTerms,
+  SendMessagesResult,
+  TradeDealRecord,
+} from "@/types/chat";
 
-const LOCAL_STORAGE_KEY = "xchat.messages.v1";
+export class MessagingError extends Error {
+  code: string;
+  retryable: boolean;
 
-type PersistedMessageMap = Record<string, Message[]>;
-
-export interface MessageRepository {
-  saveMessage(chatId: string, message: Message): Promise<void>;
-  loadAllMessages(): Promise<PersistedMessageMap>;
-}
-
-function dedupeMessages(messages: Message[]) {
-  const byId = new Map<string, Message>();
-  messages.forEach((message) => {
-    byId.set(message.id, message);
-  });
-
-  return sortMessagesChronologically(Array.from(byId.values()));
-}
-
-function withViewerPerspective(message: Message) {
-  if (message.senderEmail) {
-    return {
-      ...message,
-      isMine: isCurrentParticipantEmail(message.senderEmail),
-    } satisfies Message;
-  }
-
-  return message;
-}
-
-function safeParseJson(value: string | null): PersistedMessageMap {
-  if (!value) {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(value) as PersistedMessageMap;
-    if (!parsed || typeof parsed !== "object") {
-      return {};
-    }
-
-    return parsed;
-  } catch {
-    return {};
+  constructor(code: string, retryable = false) {
+    super(code);
+    this.name = "MessagingError";
+    this.code = code;
+    this.retryable = retryable;
   }
 }
 
-class LocalStorageMessageRepository implements MessageRepository {
-  async saveMessage(chatId: string, message: Message) {
-    if (globalThis.window === undefined) {
-      return;
-    }
-
-    const existing = safeParseJson(globalThis.localStorage.getItem(LOCAL_STORAGE_KEY));
-    const currentMessages = existing[chatId] ?? [];
-
-    existing[chatId] = dedupeMessages([...currentMessages, message]).map(withViewerPerspective);
-    globalThis.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(existing));
-  }
-
-  async loadAllMessages() {
-    if (globalThis.window === undefined) {
-      return {};
-    }
-
-    return Object.fromEntries(
-      Object.entries(safeParseJson(globalThis.localStorage.getItem(LOCAL_STORAGE_KEY))).map(([chatId, messages]) => [
-        chatId,
-        messages.map(withViewerPerspective),
-      ]),
-    );
-  }
+interface SendMessagesRequest {
+  dispatchId: string;
+  messageType: MessageType;
+  content: string;
+  recipientIds: string[];
+  rfqTerms?: Record<string, unknown>;
+  retryRecipientIds?: string[];
 }
 
-class SupabaseMessageRepository implements MessageRepository {
-  private readonly client: SupabaseClient;
+function requireClient(): SupabaseClient {
+  const client = getSupabaseBrowserClient();
+  if (!client) {
+    throw new MessagingError("unauthenticated");
+  }
+  return client;
+}
 
-  constructor(private readonly fallback: MessageRepository) {
-    this.client = getSupabaseBrowserClient();
+function toMessagingError(error: unknown): MessagingError {
+  if (error instanceof MessagingError) {
+    return error;
   }
 
-  async saveMessage(chatId: string, message: Message) {
+  const record = error as { message?: string; details?: string; code?: string };
+  if (record?.details) {
     try {
-      const participant = getCurrentParticipant();
-      const payload = {
-        id: message.id,
-        chat_id: chatId,
-        content: message.content,
-        sender: message.sender,
-        sender_email: message.senderEmail ?? participant?.email ?? null,
-        timestamp: message.timestamp,
-        created_at: message.createdAt ?? new Date().toISOString(),
-        status: message.status,
-        is_mine: !!message.isMine,
-        is_macro: !!message.isMacro,
-        quote_request_id: message.quoteRequestId ?? null,
+      const details = JSON.parse(record.details) as { code?: string };
+      if (details?.code) {
+        return new MessagingError(details.code, false);
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  if (record?.code) {
+    return new MessagingError(record.code, false);
+  }
+
+  // No structured server error: the outcome is ambiguous (transport/timeout).
+  return new MessagingError("unknown", true);
+}
+
+export const messageRepository = {
+  async sendMessages(request: SendMessagesRequest): Promise<SendMessagesResult> {
+    const client = requireClient();
+    try {
+      const payload: Record<string, unknown> = {
+        dispatchId: request.dispatchId,
+        messageType: request.messageType,
+        content: request.content,
+        recipientIds: request.recipientIds,
       };
+      if (request.messageType === "rfq" && request.rfqTerms) {
+        payload.rfqTerms = request.rfqTerms;
+      }
+      if (request.retryRecipientIds) {
+        payload.retryRecipientIds = request.retryRecipientIds;
+      }
 
-      const { error } = await this.client
-        .from("chat_messages")
-        .upsert(payload, { onConflict: "id" });
-
+      const { data, error } = await client.rpc("send_messages", { request: payload });
       if (error) {
-        await this.fallback.saveMessage(chatId, message);
+        throw error;
       }
-    } catch {
-      await this.fallback.saveMessage(chatId, message);
+      return data as SendMessagesResult;
+    } catch (error) {
+      throw toMessagingError(error);
     }
-  }
+  },
 
-  async loadAllMessages() {
-    try {
-      const { data, error } = await this.client
-        .from("chat_messages")
-        .select("id, chat_id, content, sender, sender_email, timestamp, created_at, status, is_mine, is_macro, quote_request_id")
-        .order("created_at", { ascending: true });
-
-      if (error || !data) {
-        return await this.fallback.loadAllMessages();
-      }
-
-      const map = data.reduce<PersistedMessageMap>((accumulator, row) => {
-        const chatId = String(row.chat_id);
-        accumulator[chatId] ??= [];
-        accumulator[chatId].push({
-          id: String(row.id),
-          content: String(row.content ?? ""),
-          sender: String(row.sender ?? "Unknown"),
-          senderEmail: row.sender_email ? String(row.sender_email) : undefined,
-          timestamp: String(row.timestamp ?? ""),
-          createdAt: String(row.created_at ?? ""),
-          status: (row.status as Message["status"]) || "sent",
-          isMine: Boolean(row.is_mine),
-          isMacro: Boolean(row.is_macro),
-          quoteRequestId: row.quote_request_id ? String(row.quote_request_id) : undefined,
-        });
-        return accumulator;
-      }, {});
-
-      Object.keys(map).forEach((chatId) => {
-        map[chatId] = dedupeMessages(map[chatId]).map(withViewerPerspective);
-      });
-
-      return map;
-    } catch {
-      return await this.fallback.loadAllMessages();
+  async listParticipants(): Promise<ParticipantRecord[]> {
+    const client = requireClient();
+    const { data, error } = await client.rpc("list_participants");
+    if (error) {
+      throw toMessagingError(error);
     }
-  }
-}
+    return Array.isArray(data) ? (data as ParticipantRecord[]) : [];
+  },
 
-function createMessageRepository() {
-  const localRepository = new LocalStorageMessageRepository();
+  async listConversations() {
+    const client = requireClient();
+    const { data, error } = await client.rpc("list_conversations");
+    if (error) {
+      throw toMessagingError(error);
+    }
+    return Array.isArray(data) ? data : [];
+  },
 
-  if (config.persistence.provider !== "supabase") {
-    return localRepository;
-  }
+  async listMessages(
+    conversationId: string,
+    cursor: { createdAt: string; id: string } | null,
+    limit = 100,
+  ): Promise<MessagesPage> {
+    const client = requireClient();
+    const { data, error } = await client.rpc("list_messages", {
+      p_conversation_id: conversationId,
+      p_cursor_created_at: cursor?.createdAt ?? null,
+      p_cursor_id: cursor?.id ?? null,
+      p_limit: limit,
+    });
+    if (error) {
+      throw toMessagingError(error);
+    }
+    return data as MessagesPage;
+  },
 
-  if (!hasSupabaseConfig() || !getSupabaseBrowserClient()) {
-    logger.warn("Supabase persistence selected without configuration. Local message repository will be used.");
-    return localRepository;
-  }
+  async getMessage(messageId: string): Promise<MessageRecord | null> {
+    const client = requireClient();
+    const { data, error } = await client.rpc("get_message", { p_message_id: messageId });
+    if (error) {
+      throw toMessagingError(error);
+    }
+    return (data as MessageRecord | null) ?? null;
+  },
 
-  return new SupabaseMessageRepository(localRepository);
-}
+  async getDispatch(dispatchId: string): Promise<MessageDispatchRecord | null> {
+    const client = requireClient();
+    const { data, error } = await client.rpc("get_dispatch", { p_dispatch_id: dispatchId });
+    if (error) {
+      throw toMessagingError(error);
+    }
+    return (data as MessageDispatchRecord | null) ?? null;
+  },
 
-export const messageRepository = createMessageRepository();
+  async listQuoteInvitations(): Promise<QuoteInvitationRecord[]> {
+    const client = requireClient();
+    const { data, error } = await client.rpc("list_quote_invitations");
+    if (error) {
+      throw toMessagingError(error);
+    }
+    return Array.isArray(data) ? (data as QuoteInvitationRecord[]) : [];
+  },
+
+  async listQuoteResponses(invitationId: string): Promise<QuoteResponseRecord[]> {
+    const client = requireClient();
+    const { data, error } = await client.rpc("list_quote_responses", { p_invitation_id: invitationId });
+    if (error) {
+      throw toMessagingError(error);
+    }
+    return Array.isArray(data) ? (data as QuoteResponseRecord[]) : [];
+  },
+
+  async submitQuoteResponse(input: {
+    invitationId: string;
+    clientResponseId: string;
+    quotedPremium: string;
+    notes?: string | null;
+  }) {
+    const client = requireClient();
+    const { data, error } = await client.rpc("submit_quote_response", {
+      request: {
+        invitationId: input.invitationId,
+        clientResponseId: input.clientResponseId,
+        quotedPremium: input.quotedPremium,
+        notes: input.notes ?? null,
+      },
+    });
+    if (error) {
+      throw toMessagingError(error);
+    }
+    return data as { ok: boolean; response: QuoteResponseRecord; message: MessageRecord };
+  },
+
+  async counterQuoteResponse(input: {
+    parentResponseId: string;
+    clientResponseId: string;
+    quotedPremium: string;
+    notes?: string | null;
+  }) {
+    const client = requireClient();
+    const { data, error } = await client.rpc("counter_quote_response", {
+      request: {
+        parentResponseId: input.parentResponseId,
+        clientResponseId: input.clientResponseId,
+        quotedPremium: input.quotedPremium,
+        notes: input.notes ?? null,
+      },
+    });
+    if (error) {
+      throw toMessagingError(error);
+    }
+    return data as { ok: boolean; response: QuoteResponseRecord; message: MessageRecord };
+  },
+
+  async rejectQuoteResponse(input: { responseId: string; clientActionId: string }) {
+    const client = requireClient();
+    const { data, error } = await client.rpc("reject_quote_response", {
+      request: { responseId: input.responseId, clientActionId: input.clientActionId },
+    });
+    if (error) {
+      throw toMessagingError(error);
+    }
+    return data as { ok: boolean; response: QuoteResponseRecord; message: MessageRecord };
+  },
+
+  async bookQuoteResponse(input: { responseId: string; clientActionId: string }) {
+    const client = requireClient();
+    const { data, error } = await client.rpc("book_quote_response", {
+      request: { responseId: input.responseId, clientActionId: input.clientActionId },
+    });
+    if (error) {
+      throw toMessagingError(error);
+    }
+    return data as {
+      ok: boolean;
+      response: QuoteResponseRecord;
+      deal: TradeDealRecord;
+      message: MessageRecord;
+    };
+  },
+};
+
+export type { RfqTerms, QuoteRequestRecord };

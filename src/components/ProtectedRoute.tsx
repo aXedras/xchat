@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { authService } from "@/services/authService";
+import { authService, AppAuthIdentity } from "@/services/authService";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -12,37 +12,40 @@ const ProtectedRoute = ({
   requireVendorAdmin = false,
 }: ProtectedRouteProps) => {
   const location = useLocation();
+  const [identity, setIdentity] = useState<AppAuthIdentity | null>(
+    authService.getAppIdentity(),
+  );
   const [isCheckingSession, setIsCheckingSession] = useState(
     authService.isSupabaseAuthConfigured(),
-  );
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    authService.isAppAuthenticated(),
-  );
-  const [isVendorAdmin, setIsVendorAdmin] = useState(
-    authService.isVendorAdmin(),
   );
 
   useEffect(() => {
     let isCancelled = false;
 
+    const unsubscribe = authService.subscribeAppAuth((nextIdentity) => {
+      if (!isCancelled) {
+        setIdentity(nextIdentity);
+        setIsCheckingSession(false);
+      }
+    });
+
     const restoreSession = async () => {
       if (!authService.isSupabaseAuthConfigured()) {
-        setIsAuthenticated(authService.isAppAuthenticated());
-        setIsVendorAdmin(authService.isVendorAdmin());
-        setIsCheckingSession(false);
+        if (!isCancelled) {
+          setIdentity(authService.getAppIdentity());
+          setIsCheckingSession(false);
+        }
         return;
       }
 
       try {
-        const identity = await authService.restoreAppSession();
+        const restored = await authService.restoreAppSession();
         if (!isCancelled) {
-          setIsAuthenticated(!!identity);
-          setIsVendorAdmin(authService.isVendorAdmin());
+          setIdentity(restored);
         }
       } catch {
         if (!isCancelled) {
-          setIsAuthenticated(authService.isAppAuthenticated());
-          setIsVendorAdmin(authService.isVendorAdmin());
+          setIdentity(authService.getAppIdentity());
         }
       } finally {
         if (!isCancelled) {
@@ -55,6 +58,7 @@ const ProtectedRoute = ({
 
     return () => {
       isCancelled = true;
+      unsubscribe();
     };
   }, []);
 
@@ -62,11 +66,11 @@ const ProtectedRoute = ({
     return null;
   }
 
-  if (!isAuthenticated) {
+  if (!identity) {
     return <Navigate to="/" replace state={{ from: location }} />;
   }
 
-  if (requireVendorAdmin && !isVendorAdmin) {
+  if (requireVendorAdmin && identity.role !== "vendor-admin") {
     return <Navigate to="/dashboard" replace />;
   }
 

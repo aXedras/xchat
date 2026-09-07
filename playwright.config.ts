@@ -44,6 +44,12 @@ process.env.VITE_DEMO_PASSWORD = demoAuth.password;
 process.env.VITE_VENDOR_ADMIN_EMAIL = vendorAdminAuth.email;
 process.env.VITE_VENDOR_ADMIN_PASSWORD = vendorAdminAuth.password;
 
+const localSupabaseUrl =
+  process.env.E2E_SUPABASE_URL || "http://127.0.0.1:54321";
+const localSupabaseKey =
+  process.env.E2E_SUPABASE_PUBLISHABLE_KEY ||
+  "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -67,6 +73,9 @@ export default defineConfig({
     command: `npm run dev -- --host 127.0.0.1 --port ${playwrightPort} --strictPort`,
     env: {
       ...process.env,
+      VITE_ENABLE_DEMO_AUTH: "true",
+      VITE_SUPABASE_URL: localSupabaseUrl,
+      VITE_SUPABASE_PUBLISHABLE_KEY: localSupabaseKey,
       VITE_DEMO_EMAIL: demoAuth.email,
       VITE_DEMO_PASSWORD: demoAuth.password,
       VITE_VENDOR_ADMIN_EMAIL: vendorAdminAuth.email,

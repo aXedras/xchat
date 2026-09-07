@@ -1,21 +1,23 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CounterpartyInsight } from "@/types/chat";
+import { Chat, ComplianceFlag } from "@/types/chat";
 import { CustomerTimelineEntry } from "@/types/customer";
-import { customerTimelines } from "@/data/mockCustomerTimelines";
+import { getCustomerSeed } from "@/data/customerSeed";
 import { ArrowDownLeft, ArrowUpRight, MessageSquare, ShieldCheck, User } from "lucide-react";
 
 interface CustomerViewProps {
-  chatId: string;
-  insight?: CounterpartyInsight;
+  chat: Chat;
 }
 
-const statusConfig = {
+const kycStatusConfig: Record<
+  "onboarded" | "in-review" | "not-onboarded",
+  { label: string; className: string }
+> = {
   onboarded: { label: "KYC onboarded", className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
   "in-review": { label: "KYC in review", className: "bg-amber-100 text-amber-800 border-amber-200" },
   "not-onboarded": { label: "Not onboarded", className: "bg-slate-100 text-slate-700 border-slate-200" },
-} as const;
+};
 
 const tradeStatusClassName: Record<string, string> = {
   settled: "bg-emerald-100 text-emerald-800 border-emerald-200",
@@ -30,11 +32,11 @@ function formatDate(iso: string): string {
 
 function TimelineEntry({ entry }: { entry: CustomerTimelineEntry }) {
   const isTrade = entry.type === "trade";
-  const Icon = isTrade
-    ? entry.direction === "buy" ? ArrowDownLeft : ArrowUpRight
-    : MessageSquare;
+  const Icon = isTrade ? (entry.direction === "buy" ? ArrowDownLeft : ArrowUpRight) : MessageSquare;
   const iconColor = isTrade
-    ? entry.direction === "buy" ? "text-emerald-600" : "text-blue-600"
+    ? entry.direction === "buy"
+      ? "text-emerald-600"
+      : "text-blue-600"
     : "text-muted-foreground";
 
   return (
@@ -46,7 +48,10 @@ function TimelineEntry({ entry }: { entry: CustomerTimelineEntry }) {
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm font-medium leading-snug">{entry.summary}</p>
           {entry.status && (
-            <Badge variant="outline" className={`shrink-0 capitalize ${tradeStatusClassName[entry.status] ?? ""}`}>
+            <Badge
+              variant="outline"
+              className={`shrink-0 capitalize ${tradeStatusClassName[entry.status] ?? ""}`}
+            >
               {entry.status}
             </Badge>
           )}
@@ -57,9 +62,23 @@ function TimelineEntry({ entry }: { entry: CustomerTimelineEntry }) {
   );
 }
 
-const CustomerView = ({ chatId, insight }: CustomerViewProps) => {
-  const timeline = customerTimelines[chatId] ?? [];
-  const status = insight ? statusConfig[insight.kycStatus] : statusConfig["not-onboarded"];
+function ComplianceFlagBadge({ flag }: { flag: ComplianceFlag }) {
+  const className =
+    flag.severity === "positive"
+      ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+      : flag.severity === "warning"
+        ? "bg-amber-100 text-amber-800 border-amber-200"
+        : "bg-rose-100 text-rose-800 border-rose-200";
+
+  return (
+    <Badge variant="outline" className={className}>
+      {flag.label}
+    </Badge>
+  );
+}
+
+const CustomerView = ({ chat }: CustomerViewProps) => {
+  const seed = getCustomerSeed(chat.counterpartyUserId);
 
   return (
     <ScrollArea className="h-full max-h-[28rem] xl:max-h-none">
@@ -69,39 +88,65 @@ const CustomerView = ({ chatId, insight }: CustomerViewProps) => {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Customer</p>
-                <CardTitle className="mt-2 text-lg">{insight?.company ?? "Unknown"}</CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">{insight?.counterparty ?? "—"}</p>
+                <CardTitle data-testid="customer-name" className="mt-2 text-lg">
+                  {chat.name}
+                </CardTitle>
+                {chat.companyName && <p className="mt-1 text-sm text-muted-foreground">{chat.companyName}</p>}
               </div>
-              <Badge variant="outline" className={status.className}>{status.label}</Badge>
+              {seed && (
+                <Badge variant="outline" className={kycStatusConfig[seed.kycStatus].className}>
+                  {kycStatusConfig[seed.kycStatus].label}
+                </Badge>
+              )}
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center gap-2 text-sm">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-              <span className="text-muted-foreground">{insight?.onboardingNote ?? "No onboarding record available."}</span>
-            </div>
-            <div className="flex gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <User className="h-3.5 w-3.5" />
-                {insight?.dealHistory.length ?? 0} deals
+          {seed ? (
+            <CardContent className="space-y-3">
+              <div className="flex items-start gap-2 text-sm">
+                <User className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <p className="text-muted-foreground">{seed.onboardingNote}</p>
               </div>
-              <div className="flex items-center gap-1">
-                <MessageSquare className="h-3.5 w-3.5" />
-                {insight?.requestHistory.length ?? 0} requests
+              {seed.complianceFlags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {seed.complianceFlags.map((flag) => (
+                    <ComplianceFlagBadge key={flag.label} flag={flag} />
+                  ))}
+                </div>
+              )}
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <p>Profil und Historie sind Seed-Daten bis zur Bullion Integrity Ledger-Integration.</p>
               </div>
-            </div>
-          </CardContent>
+            </CardContent>
+          ) : (
+            <CardContent>
+              <div className="flex items-start gap-2 text-sm">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <p className="text-muted-foreground">
+                  Für diese Gegenpartei liegen noch keine Kundendaten vor. KYC und Transaktionshistorie werden mit der
+                  Bullion Integrity Ledger-Integration synchronisiert.
+                </p>
+              </div>
+            </CardContent>
+          )}
         </Card>
 
         <Card className="shadow-none">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Timeline</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <MessageSquare className="h-4 w-4 text-primary" />
+              Transaction history
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {timeline.length > 0 ? (
-              timeline.map((entry) => <TimelineEntry key={entry.id} entry={entry} />)
+          <CardContent>
+            {seed && seed.timeline.length > 0 ? (
+              <div className="space-y-2">
+                {seed.timeline.map((entry) => (
+                  <TimelineEntry key={entry.id} entry={entry} />
+                ))}
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No history recorded yet.</p>
+              <p className="text-sm text-muted-foreground">No transactions recorded yet.</p>
             )}
           </CardContent>
         </Card>
