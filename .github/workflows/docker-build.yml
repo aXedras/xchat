@@ -177,8 +177,18 @@ jobs:
       - name: Capture local Supabase connection details
         run: supabase status -o env >> "$GITHUB_ENV"
 
+      - name: Reset database (apply migrations)
+        run: supabase db reset
+
+      - name: Run pgTAP database tests
+        run: supabase test db
+
       - name: Wait for Supabase API gateway
         run: |
+          # `supabase db reset` restarts containers internally, so the
+          # gateway must be re-checked here rather than only once after
+          # `supabase start` (pgTAP connects directly to Postgres and
+          # proves nothing about the Auth/Kong gateway's readiness).
           for attempt in $(seq 1 30); do
             if curl --fail --silent "${{ env.API_URL }}/auth/v1/health" > /dev/null; then
               exit 0
@@ -187,12 +197,6 @@ jobs:
           done
           echo "Supabase API gateway did not become ready in time" >&2
           exit 1
-
-      - name: Reset database (apply migrations)
-        run: supabase db reset
-
-      - name: Run pgTAP database tests
-        run: supabase test db
 
       - name: Provision E2E users
         env:
