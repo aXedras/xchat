@@ -187,7 +187,7 @@ jobs:
         env:
           E2E_SUPABASE_URL: ${{ env.API_URL }}
           E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
-        run: sh scripts/provision-e2e-users.sh
+        run: sh -x scripts/provision-e2e-users.sh
 
       - name: Run core E2E tests
         env:
