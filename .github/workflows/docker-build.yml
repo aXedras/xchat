@@ -177,6 +177,17 @@ jobs:
       - name: Capture local Supabase connection details
         run: supabase status -o env >> "$GITHUB_ENV"
 
+      - name: Wait for Supabase API gateway
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent "${{ env.API_URL }}/auth/v1/health" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Supabase API gateway did not become ready in time" >&2
+          exit 1
+
       - name: Reset database (apply migrations)
         run: supabase db reset
 
@@ -187,7 +198,7 @@ jobs:
         env:
           E2E_SUPABASE_URL: ${{ env.API_URL }}
           E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
-        run: sh -x scripts/provision-e2e-users.sh
+        run: sh scripts/provision-e2e-users.sh
 
       - name: Run core E2E tests
         env:
