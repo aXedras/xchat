@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,13 +12,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { authService } from "@/services/authService";
+import { authService, AppAuthIdentity } from "@/services/authService";
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [showSearch, setShowSearch] = useState(false);
-  const identity = authService.getAppIdentity();
+  const [identity, setIdentity] = useState<AppAuthIdentity | null>(
+    authService.getAppIdentity(),
+  );
+
+  useEffect(() => {
+    return authService.subscribeAppAuth(setIdentity);
+  }, []);
+
   const avatarFallback =
     identity?.displayName
       ?.split(" ")

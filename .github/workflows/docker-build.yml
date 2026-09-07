@@ -166,13 +166,45 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: npx supabase start --exclude imgproxy,pooler
+
+      - name: Capture local Supabase connection details
+        run: npx supabase status -o env >> "$GITHUB_ENV"
+
+      - name: Reset database (apply migrations)
+        run: npm run supabase:reset
+
+      - name: Run pgTAP database tests
+        run: npm run supabase:test
+
+      - name: Provision E2E users
+        env:
+          E2E_SUPABASE_URL: ${{ env.API_URL }}
+          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
+        run: sh scripts/provision-e2e-users.sh
+
       - name: Run core E2E tests
+        env:
+          E2E_SUPABASE_URL: ${{ env.API_URL }}
+          E2E_SUPABASE_PUBLISHABLE_KEY: ${{ env.PUBLISHABLE_KEY }}
         run: >-
           npx playwright test
           e2e/auth-guards.spec.ts
-          e2e/persistence-reload.spec.ts
-          e2e/rfq-seeded-scenario.spec.ts
-          e2e/rfq-workflow.spec.ts
+          e2e/closed-group-messaging.spec.ts
+          e2e/customer-seed.spec.ts
+          e2e/customer-view.spec.ts
+          e2e/side-panel.spec.ts
+          e2e/message-utils.spec.ts
+
+      - name: Stop local Supabase
+        if: always()
+        run: npx supabase stop
 
       - name: Upload core E2E reports
         if: always() && github.actor != 'nektos/act'
@@ -267,4 +299,3 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
-

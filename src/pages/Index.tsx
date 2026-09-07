@@ -34,8 +34,15 @@ const Index = () => {
 
     void maybeResumeSession();
 
+    const unsubscribe = authService.subscribeAppAuth((identity) => {
+      if (identity && !isCancelled) {
+        navigate("/dashboard", { replace: true });
+      }
+    });
+
     return () => {
       isCancelled = true;
+      unsubscribe();
     };
   }, [navigate]);
 
@@ -91,7 +98,7 @@ const Index = () => {
         />
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          {config.demo.email && config.demo.password && (
+          {config.auth.enableDemoAuth && config.demo.email && config.demo.password && (
             <>
               <p>Demo credentials</p>
               <p className="mt-1">
@@ -103,7 +110,8 @@ const Index = () => {
               </p>
             </>
           )}
-          {config.auth.vendorAdmin.email &&
+          {config.auth.enableDemoAuth &&
+            config.auth.vendorAdmin.email &&
             config.auth.vendorAdmin.password && (
               <>
                 <p className="mt-4">Vendor admin credentials</p>

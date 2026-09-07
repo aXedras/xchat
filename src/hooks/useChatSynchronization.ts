@@ -1,191 +1,65 @@
-import { Dispatch, SetStateAction, useEffect } from "react";
-import { AddMessageBase, Chat, Message, QuoteRequest, QuoteResponse, TradeDeal, UpdateChatListEntry } from "@/types/chat";
-import { getCurrentParticipant } from "@/services/chatIdentity";
-import { formatChatTimestamp } from "@/utils/format";
-import { sortMessagesChronologically } from "@/utils/messageUtils";
-import { RealtimeEvent } from "@/services/realtimeBus";
-import { chatConversationRepository } from "@/services/persistence/chatConversationRepository";
+import { Dispatch, SetStateAction, useCallback, useEffect } from "react";
+import { Message } from "@/types/chat";
 import { messageRepository } from "@/services/persistence/messageRepository";
-
-function mergePersistedMessages(
-  previous: Record<string, Message[]>,
-  persistedMessages: Record<string, Message[]>,
-) {
-  const next = { ...previous };
-
-  Object.entries(persistedMessages).forEach(([chatId, persisted]) => {
-    const existing = next[chatId] ?? [];
-    const byId = new Map<string, Message>();
-
-    [...existing, ...persisted].forEach((message) => {
-      byId.set(message.id, message);
-    });
-
-    next[chatId] = sortMessagesChronologically(Array.from(byId.values()));
-  });
-
-  return next;
-}
+import { mapMessageRecordToMessage } from "@/services/persistence/chatConversationRepository";
+import { realtimeBus } from "@/services/realtimeBus";
+import { getCurrentParticipant } from "@/services/chatIdentity";
+import { mergeMessages } from "@/utils/messageUtils";
 
 interface UseChatSynchronizationParams {
-  realtimeOriginId: string;
-  activeChats: Chat[];
-  archivedChats: Chat[];
-  setActiveChats: Dispatch<SetStateAction<Chat[]>>;
   setMessages: Dispatch<SetStateAction<Record<string, Message[]>>>;
-  addMessageBase: AddMessageBase;
-  restoreChat: (chatId: string) => void;
-  upsertIncomingQuoteRequest: (request: QuoteRequest) => void;
-  upsertIncomingQuoteResponse: (response: QuoteResponse) => void;
-  upsertIncomingTradeDeal: (deal: TradeDeal) => void;
+  refreshChats: () => Promise<void>;
+  refreshQuoteInvitations: () => Promise<void>;
 }
 
 export function useChatSynchronization({
-  realtimeOriginId,
-  activeChats,
-  archivedChats,
-  setActiveChats,
   setMessages,
-  addMessageBase,
-  restoreChat,
-  upsertIncomingQuoteRequest,
-  upsertIncomingQuoteResponse,
-  upsertIncomingTradeDeal,
+  refreshChats,
+  refreshQuoteInvitations,
 }: Readonly<UseChatSynchronizationParams>) {
+  const loadMessages = useCallback(
+    async (conversationId: string) => {
+      const page = await messageRepository.listMessages(conversationId, null, 100);
+      const mapped = page.messages.map(mapMessageRecordToMessage);
+      setMessages((previous) => ({
+        ...previous,
+        [conversationId]: mergeMessages(previous[conversationId] ?? [], mapped),
+      }));
+    },
+    [setMessages],
+  );
+
   useEffect(() => {
-    let isCancelled = false;
+    const participant = getCurrentParticipant();
+    if (!participant?.userId) {
+      return;
+    }
 
-    const loadPersistedMessages = async () => {
-      const persistedMessages = await messageRepository.loadAllMessages();
-      if (isCancelled) {
-        return;
+    realtimeBus.connect(participant.userId);
+    const unsubscribe = realtimeBus.onMessageCreated(async (event) => {
+      try {
+        const message = await messageRepository.getMessage(event.messageId);
+        if (message) {
+          const mapped = mapMessageRecordToMessage(message);
+          setMessages((previous) => ({
+            ...previous,
+            [message.conversationId]: mergeMessages(previous[message.conversationId] ?? [], [mapped]),
+          }));
+          void refreshChats();
+          if (message.type === "rfq") {
+            void refreshQuoteInvitations();
+          }
+        }
+      } catch {
+        // A missed message is recovered by the next conversation load.
       }
-
-      setMessages((previous) => {
-        return mergePersistedMessages(previous, persistedMessages);
-      });
-    };
-
-    void loadPersistedMessages();
+    });
 
     return () => {
-      isCancelled = true;
+      unsubscribe();
+      realtimeBus.disconnect();
     };
-  }, [setMessages]);
+  }, [setMessages, refreshChats, refreshQuoteInvitations]);
 
-  const upsertChatListEntry = (chat: Chat) => {
-    setActiveChats((prevChats) => {
-      const existing = prevChats.find((entry) => entry.id === chat.id);
-      if (existing) {
-        return [{ ...existing, ...chat }, ...prevChats.filter((entry) => entry.id !== chat.id)];
-      }
-
-      return [chat, ...prevChats];
-    });
-  };
-
-  const updateChatListEntry: UpdateChatListEntry = (chatId, content, timestamp, createdAt = new Date().toISOString()) => {
-    const chatList = [...activeChats, ...archivedChats];
-    const chatToUpdate = chatList.find((chat) => chat.id === chatId);
-
-    if (!chatToUpdate) {
-      return;
-    }
-
-    const updatedChat = {
-      ...chatToUpdate,
-      lastMessage: content,
-      timestamp,
-      createdAt,
-    };
-
-    setActiveChats((prevChats) => prevChats.map((chat) => (chat.id === chatId ? updatedChat : chat)));
-    void chatConversationRepository.updateConversationPreview(chatId, content, createdAt);
-  };
-
-  const appendWorkflowMessage = (chatId: string, requestId: string, content: string, createdAt = new Date().toISOString()) => {
-    const participant = getCurrentParticipant();
-    const workflowMessage: Message = {
-      id: `msg-${Date.now()}`,
-      content,
-      sender: participant?.displayName ?? "You",
-      senderEmail: participant?.email,
-      timestamp: formatChatTimestamp(new Date(createdAt)),
-      createdAt,
-      status: "sent",
-      isMine: true,
-      isMacro: false,
-      quoteRequestId: requestId,
-    };
-
-    addMessageBase(chatId, content, false, restoreChat, updateChatListEntry, {
-      id: workflowMessage.id,
-      createdAt: workflowMessage.createdAt,
-      timestamp: workflowMessage.timestamp,
-      status: workflowMessage.status,
-      sender: workflowMessage.sender,
-      isMine: workflowMessage.isMine,
-      isMacro: workflowMessage.isMacro,
-      quoteRequestId: workflowMessage.quoteRequestId,
-    });
-
-    void messageRepository.saveMessage(chatId, workflowMessage);
-    return workflowMessage;
-  };
-
-  const addIncomingRealtimeMessage = (event: RealtimeEvent) => {
-    if (event.originId === realtimeOriginId) {
-      return;
-    }
-
-    if (event.type === "chat.upsert") {
-      upsertChatListEntry(event.chat);
-      void chatConversationRepository.upsertConversation(event.chat);
-      return;
-    }
-
-    if (event.type === "quote-request.upsert") {
-      upsertIncomingQuoteRequest(event.quoteRequest);
-      return;
-    }
-
-    if (event.type === "quote-response.upsert") {
-      upsertIncomingQuoteResponse(event.quoteResponse);
-      return;
-    }
-
-    if (event.type === "trade-deal.upsert") {
-      upsertIncomingTradeDeal(event.tradeDeal);
-      return;
-    }
-
-    const { chatId, message } = event;
-    let isDuplicate = false;
-
-    setMessages((previous) => {
-      const existing = previous[chatId] || [];
-      if (existing.some((entry) => entry.id === message.id)) {
-        isDuplicate = true;
-        return previous;
-      }
-
-      return {
-        ...previous,
-        [chatId]: [...existing, message],
-      };
-    });
-
-    if (isDuplicate) {
-      return;
-    }
-
-    void messageRepository.saveMessage(chatId, message);
-    updateChatListEntry(chatId, message.content, message.timestamp, message.createdAt);
-  };
-
-  return {
-    appendWorkflowMessage,
-    updateChatListEntry,
-    addIncomingRealtimeMessage,
-  };
+  return { loadMessages };
 }

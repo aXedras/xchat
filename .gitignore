@@ -21,6 +21,7 @@ reports
 semgrep.sarif
 .semgrep-cache
 supabase/.temp
+supabase/.branches
 .venv
 playwright-report
 test-results

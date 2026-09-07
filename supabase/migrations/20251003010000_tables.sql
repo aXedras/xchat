@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS public.user_roles (
   "user_id" uuid not null,
   "role" public.app_role not null,
   "created_at" timestamptz default now(),
-  UNIQUE ("user_id", "role")
+  UNIQUE ("user_id")
 );
 ALTER TABLE public.user_roles OWNER TO postgres;
 -- ============================================
@@ -614,87 +614,151 @@ COMMENT ON COLUMN public.auto_prediction_jobs.failed_count IS 'Number of failed 
 COMMENT ON COLUMN public.auto_prediction_jobs.current_status_message IS 'Human-readable status message for UI display';
 
 -- ============================================
--- xChat Shared Conversation Tables
+-- xChat Closed-Group Messaging Tables (user-id based)
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS public.chat_conversations (
-  id text PRIMARY KEY,
-  name text NOT NULL,
-  type text NOT NULL,
-  company_name text,
-  created_by_email text NOT NULL,
+CREATE TABLE IF NOT EXISTS public.conversations (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  participant_low_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  participant_high_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  last_message text NOT NULL DEFAULT 'No messages yet',
-  last_message_at timestamptz
+  last_message_at timestamptz,
+  CONSTRAINT conversations_pair_unique UNIQUE (participant_low_user_id, participant_high_user_id),
+  CONSTRAINT conversations_pair_ordered CHECK (participant_low_user_id < participant_high_user_id)
 );
-ALTER TABLE public.chat_conversations OWNER TO postgres;
+ALTER TABLE public.conversations OWNER TO postgres;
 
-CREATE TABLE IF NOT EXISTS public.chat_conversation_members (
-  conversation_id text NOT NULL REFERENCES public.chat_conversations(id) ON DELETE CASCADE,
-  member_email text NOT NULL,
-  display_name text,
-  member_role text NOT NULL DEFAULT 'member',
-  joined_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (conversation_id, member_email)
-);
-ALTER TABLE public.chat_conversation_members OWNER TO postgres;
-
-CREATE TABLE IF NOT EXISTS public.chat_messages (
-  id text PRIMARY KEY,
-  chat_id text NOT NULL REFERENCES public.chat_conversations(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS public.messages (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  conversation_id uuid NOT NULL REFERENCES public.conversations(id) ON DELETE RESTRICT,
+  sender_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  recipient_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  type text NOT NULL CHECK (type IN ('standard', 'rfq')),
   content text NOT NULL,
-  sender text NOT NULL,
-  sender_email text NOT NULL,
-  timestamp text NOT NULL,
+  quote_request_id uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
-  status text NOT NULL,
-  is_mine boolean NOT NULL DEFAULT false,
-  is_macro boolean NOT NULL DEFAULT false,
-  quote_request_id text
+  CONSTRAINT messages_distinct_participants CHECK (sender_user_id <> recipient_user_id)
 );
-ALTER TABLE public.chat_messages OWNER TO postgres;
+ALTER TABLE public.messages OWNER TO postgres;
+
+CREATE TABLE IF NOT EXISTS public.message_dispatch (
+  id uuid PRIMARY KEY,
+  sender_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  message_type text NOT NULL CHECK (message_type IN ('standard', 'rfq')),
+  content text NOT NULL,
+  quote_request_id uuid,
+  status text NOT NULL CHECK (status IN ('completed', 'partial', 'failed')),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.message_dispatch OWNER TO postgres;
+
+CREATE TABLE IF NOT EXISTS public.message_dispatch_recipient (
+  dispatch_id uuid NOT NULL REFERENCES public.message_dispatch(id) ON DELETE RESTRICT,
+  requested_recipient_user_id uuid NOT NULL,
+  recipient_user_id uuid REFERENCES auth.users(id) ON DELETE RESTRICT,
+  status text NOT NULL CHECK (status IN ('accepted', 'rejected')),
+  error_code text CHECK (error_code IN ('recipient_not_found', 'self_recipient')),
+  message_id uuid REFERENCES public.messages(id) ON DELETE RESTRICT,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (dispatch_id, requested_recipient_user_id),
+  CONSTRAINT dispatch_recipient_shape CHECK (
+    (status = 'accepted' AND recipient_user_id IS NOT NULL AND message_id IS NOT NULL AND error_code IS NULL)
+    OR
+    (status = 'rejected' AND error_code IS NOT NULL AND recipient_user_id IS NULL AND message_id IS NULL)
+  )
+);
+ALTER TABLE public.message_dispatch_recipient OWNER TO postgres;
+
+-- ============================================
+-- xChat RFQ Aggregate Tables (M8)
+-- ============================================
 
 CREATE TABLE IF NOT EXISTS public.quote_requests (
-  id text PRIMARY KEY,
-  chat_id text NOT NULL REFERENCES public.chat_conversations(id) ON DELETE CASCADE,
-  source_message_id text NOT NULL,
-  type text NOT NULL,
-  status text NOT NULL,
-  requested_by text NOT NULL,
-  requested_by_email text NOT NULL,
-  requested_from text NOT NULL,
-  created_at timestamptz NOT NULL,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  owner_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  terms jsonb NOT NULL,
+  status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'converted')),
   response_deadline timestamptz,
-  terms jsonb NOT NULL
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.quote_requests OWNER TO postgres;
 
+CREATE TABLE IF NOT EXISTS public.quote_request_invitations (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  request_id uuid NOT NULL REFERENCES public.quote_requests(id) ON DELETE RESTRICT,
+  recipient_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  conversation_id uuid NOT NULL REFERENCES public.conversations(id) ON DELETE RESTRICT,
+  message_id uuid NOT NULL REFERENCES public.messages(id) ON DELETE RESTRICT,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT quote_request_invitations_unique UNIQUE (request_id, recipient_user_id)
+);
+ALTER TABLE public.quote_request_invitations OWNER TO postgres;
+
 CREATE TABLE IF NOT EXISTS public.quote_responses (
-  id text PRIMARY KEY,
-  request_id text NOT NULL REFERENCES public.quote_requests(id) ON DELETE CASCADE,
-  parent_response_id text,
-  version integer NOT NULL,
-  responder text NOT NULL,
-  responder_email text NOT NULL,
-  created_at timestamptz NOT NULL,
-  status text NOT NULL,
-  quoted_premium text,
-  notes text
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  invitation_id uuid NOT NULL REFERENCES public.quote_request_invitations(id) ON DELETE RESTRICT,
+  responder_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  parent_response_id uuid REFERENCES public.quote_responses(id) ON DELETE RESTRICT,
+  client_response_id uuid NOT NULL,
+  status text NOT NULL CHECK (status IN ('submitted', 'countered')),
+  quoted_premium text NOT NULL,
+  notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT quote_responses_client_id_unique UNIQUE (responder_user_id, client_response_id),
+  CONSTRAINT quote_responses_parent_not_self CHECK (parent_response_id IS NULL OR parent_response_id <> id)
 );
 ALTER TABLE public.quote_responses OWNER TO postgres;
 
+-- Append-only terminal decisions. A response is never mutated after insert;
+-- reject/accept are recorded here instead.
+CREATE TABLE IF NOT EXISTS public.quote_response_decisions (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  response_id uuid NOT NULL UNIQUE REFERENCES public.quote_responses(id) ON DELETE RESTRICT,
+  decided_by_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  decision text NOT NULL CHECK (decision IN ('accepted', 'rejected')),
+  client_action_id uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT quote_response_decisions_action_unique UNIQUE (decided_by_user_id, client_action_id)
+);
+ALTER TABLE public.quote_response_decisions OWNER TO postgres;
+
 CREATE TABLE IF NOT EXISTS public.trade_deals (
-  id text PRIMARY KEY,
-  request_id text NOT NULL REFERENCES public.quote_requests(id) ON DELETE CASCADE,
-  response_id text,
-  response_version integer,
-  counterparty text NOT NULL,
-  booked_by_email text,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  request_id uuid NOT NULL UNIQUE REFERENCES public.quote_requests(id) ON DELETE RESTRICT,
+  response_id uuid NOT NULL REFERENCES public.quote_responses(id) ON DELETE RESTRICT,
+  counterparty_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  booked_by_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  booking_client_action_id uuid NOT NULL,
   product text NOT NULL,
   volume text NOT NULL,
-  created_at timestamptz NOT NULL,
-  status text NOT NULL,
-  terms jsonb NOT NULL
+  status text NOT NULL DEFAULT 'booked' CHECK (status = 'booked'),
+  commercial_terms_snapshot jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT trade_deals_booking_unique UNIQUE (booked_by_user_id, booking_client_action_id)
 );
 ALTER TABLE public.trade_deals OWNER TO postgres;
+
+CREATE TABLE IF NOT EXISTS public.quote_workflow_idempotency (
+  actor_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  client_operation_id uuid NOT NULL,
+  operation text NOT NULL CHECK (operation IN ('submit', 'counter', 'reject', 'book')),
+  canonical_request jsonb NOT NULL,
+  result_snapshot jsonb NOT NULL,
+  workflow_message_id uuid NOT NULL REFERENCES public.messages(id) ON DELETE RESTRICT,
+  response_id uuid REFERENCES public.quote_responses(id) ON DELETE RESTRICT,
+  deal_id uuid REFERENCES public.trade_deals(id) ON DELETE RESTRICT,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (actor_user_id, client_operation_id),
+  CONSTRAINT quote_workflow_idempotency_shape CHECK (
+    (operation IN ('submit', 'counter', 'reject') AND deal_id IS NULL AND response_id IS NOT NULL)
+    OR
+    (operation = 'book' AND deal_id IS NOT NULL AND response_id IS NOT NULL)
+  )
+);
+ALTER TABLE public.quote_workflow_idempotency OWNER TO postgres;
+
+ALTER TABLE ONLY public.messages
+  ADD CONSTRAINT messages_quote_request_id_fkey FOREIGN KEY (quote_request_id) REFERENCES public.quote_requests(id) ON DELETE RESTRICT;
+ALTER TABLE ONLY public.message_dispatch
+  ADD CONSTRAINT message_dispatch_quote_request_id_fkey FOREIGN KEY (quote_request_id) REFERENCES public.quote_requests(id) ON DELETE RESTRICT;
