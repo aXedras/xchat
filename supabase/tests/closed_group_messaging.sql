@@ -4,7 +4,7 @@
 
 BEGIN;
 
-SELECT plan(134);
+SELECT plan(152);
 
 -- M0a: Realtime capability prerequisites
 SELECT has_schema('realtime', 'realtime schema exists');
@@ -1058,6 +1058,243 @@ SELECT is(
   (SELECT count(*) FROM public.quote_responses WHERE invitation_id = (SELECT id FROM _m9a_inv) AND parent_response_id IS NULL),
   1::bigint,
   'exactly one root response remains for the invitation after the rejected insert'
+);
+
+-- M11: delete_conversation (hard delete with activity guard)
+SELECT has_function('public', 'delete_conversation', ARRAY['uuid'], 'delete_conversation(uuid) exists');
+
+CREATE TEMP TABLE _m11_users (slot text, user_id uuid);
+
+DO $$
+DECLARE
+  v_slot text;
+  v_id uuid;
+BEGIN
+  FOREACH v_slot IN ARRAY ARRAY['o1','p1','o2','p2','o3','p3','o4','p4']
+  LOOP
+    INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token)
+    VALUES ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', 'm11-' || v_slot || '@test.local', crypt('x', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now(), '', '')
+    RETURNING id INTO v_id;
+    INSERT INTO _m11_users VALUES (v_slot, v_id);
+  END LOOP;
+END $$;
+
+GRANT SELECT ON _m11_users TO authenticated;
+
+-- Simple bilateral conversation (no RFQ) — deletable.
+INSERT INTO public.conversations (id, participant_low_user_id, participant_high_user_id)
+VALUES (
+  '00000000-0000-0000-0000-00000000a001',
+  LEAST((SELECT user_id FROM _m11_users WHERE slot = 'o1'), (SELECT user_id FROM _m11_users WHERE slot = 'p1')),
+  GREATEST((SELECT user_id FROM _m11_users WHERE slot = 'o1'), (SELECT user_id FROM _m11_users WHERE slot = 'p1'))
+);
+
+INSERT INTO public.messages (id, conversation_id, sender_user_id, recipient_user_id, type, content)
+VALUES
+  ('00000000-0000-0000-0000-00000000a101', '00000000-0000-0000-0000-00000000a001', (SELECT user_id FROM _m11_users WHERE slot = 'o1'), (SELECT user_id FROM _m11_users WHERE slot = 'p1'), 'standard', 'simple hello'),
+  ('00000000-0000-0000-0000-00000000a102', '00000000-0000-0000-0000-00000000a001', (SELECT user_id FROM _m11_users WHERE slot = 'p1'), (SELECT user_id FROM _m11_users WHERE slot = 'o1'), 'standard', 'simple reply');
+
+-- Unanswered RFQ invitation (no response) — deletable; quote_request may orphan.
+INSERT INTO public.conversations (id, participant_low_user_id, participant_high_user_id)
+VALUES (
+  '00000000-0000-0000-0000-00000000b001',
+  LEAST((SELECT user_id FROM _m11_users WHERE slot = 'o2'), (SELECT user_id FROM _m11_users WHERE slot = 'p2')),
+  GREATEST((SELECT user_id FROM _m11_users WHERE slot = 'o2'), (SELECT user_id FROM _m11_users WHERE slot = 'p2'))
+);
+
+INSERT INTO public.quote_requests (id, owner_user_id, terms, status)
+VALUES ('00000000-0000-0000-0000-00000000b201', (SELECT user_id FROM _m11_users WHERE slot = 'o2'), '{}'::jsonb, 'open');
+
+INSERT INTO public.messages (id, conversation_id, sender_user_id, recipient_user_id, type, content, quote_request_id)
+VALUES ('00000000-0000-0000-0000-00000000b101', '00000000-0000-0000-0000-00000000b001', (SELECT user_id FROM _m11_users WHERE slot = 'o2'), (SELECT user_id FROM _m11_users WHERE slot = 'p2'), 'rfq', 'unanswered rfq', '00000000-0000-0000-0000-00000000b201');
+
+INSERT INTO public.quote_request_invitations (id, request_id, recipient_user_id, conversation_id, message_id)
+VALUES ('00000000-0000-0000-0000-00000000b301', '00000000-0000-0000-0000-00000000b201', (SELECT user_id FROM _m11_users WHERE slot = 'p2'), '00000000-0000-0000-0000-00000000b001', '00000000-0000-0000-0000-00000000b101');
+
+-- RFQ with a submitted response — guarded (conversation_has_activity).
+INSERT INTO public.conversations (id, participant_low_user_id, participant_high_user_id)
+VALUES (
+  '00000000-0000-0000-0000-00000000c001',
+  LEAST((SELECT user_id FROM _m11_users WHERE slot = 'o3'), (SELECT user_id FROM _m11_users WHERE slot = 'p3')),
+  GREATEST((SELECT user_id FROM _m11_users WHERE slot = 'o3'), (SELECT user_id FROM _m11_users WHERE slot = 'p3'))
+);
+
+INSERT INTO public.quote_requests (id, owner_user_id, terms, status)
+VALUES ('00000000-0000-0000-0000-00000000c201', (SELECT user_id FROM _m11_users WHERE slot = 'o3'), '{"product":"Gold","quantity":"1KG"}'::jsonb, 'open');
+
+INSERT INTO public.messages (id, conversation_id, sender_user_id, recipient_user_id, type, content, quote_request_id)
+VALUES ('00000000-0000-0000-0000-00000000c101', '00000000-0000-0000-0000-00000000c001', (SELECT user_id FROM _m11_users WHERE slot = 'o3'), (SELECT user_id FROM _m11_users WHERE slot = 'p3'), 'rfq', 'answered rfq', '00000000-0000-0000-0000-00000000c201');
+
+INSERT INTO public.quote_request_invitations (id, request_id, recipient_user_id, conversation_id, message_id)
+VALUES ('00000000-0000-0000-0000-00000000c301', '00000000-0000-0000-0000-00000000c201', (SELECT user_id FROM _m11_users WHERE slot = 'p3'), '00000000-0000-0000-0000-00000000c001', '00000000-0000-0000-0000-00000000c101');
+
+INSERT INTO public.quote_responses (id, invitation_id, responder_user_id, parent_response_id, client_response_id, status, quoted_premium)
+VALUES ('00000000-0000-0000-0000-00000000c401', '00000000-0000-0000-0000-00000000c301', (SELECT user_id FROM _m11_users WHERE slot = 'p3'), NULL, '00000000-0000-0000-0000-00000000c901', 'submitted', '+0.20');
+
+-- RFQ with a booked trade deal — guarded (conversation_has_activity).
+INSERT INTO public.conversations (id, participant_low_user_id, participant_high_user_id)
+VALUES (
+  '00000000-0000-0000-0000-00000000d001',
+  LEAST((SELECT user_id FROM _m11_users WHERE slot = 'o4'), (SELECT user_id FROM _m11_users WHERE slot = 'p4')),
+  GREATEST((SELECT user_id FROM _m11_users WHERE slot = 'o4'), (SELECT user_id FROM _m11_users WHERE slot = 'p4'))
+);
+
+INSERT INTO public.quote_requests (id, owner_user_id, terms, status)
+VALUES ('00000000-0000-0000-0000-00000000d201', (SELECT user_id FROM _m11_users WHERE slot = 'o4'), '{"product":"Gold","quantity":"1KG"}'::jsonb, 'open');
+
+INSERT INTO public.messages (id, conversation_id, sender_user_id, recipient_user_id, type, content, quote_request_id)
+VALUES ('00000000-0000-0000-0000-00000000d101', '00000000-0000-0000-0000-00000000d001', (SELECT user_id FROM _m11_users WHERE slot = 'o4'), (SELECT user_id FROM _m11_users WHERE slot = 'p4'), 'rfq', 'booked rfq', '00000000-0000-0000-0000-00000000d201');
+
+INSERT INTO public.quote_request_invitations (id, request_id, recipient_user_id, conversation_id, message_id)
+VALUES ('00000000-0000-0000-0000-00000000d301', '00000000-0000-0000-0000-00000000d201', (SELECT user_id FROM _m11_users WHERE slot = 'p4'), '00000000-0000-0000-0000-00000000d001', '00000000-0000-0000-0000-00000000d101');
+
+INSERT INTO public.quote_responses (id, invitation_id, responder_user_id, parent_response_id, client_response_id, status, quoted_premium)
+VALUES ('00000000-0000-0000-0000-00000000d401', '00000000-0000-0000-0000-00000000d301', (SELECT user_id FROM _m11_users WHERE slot = 'p4'), NULL, '00000000-0000-0000-0000-00000000d901', 'submitted', '+0.20');
+
+INSERT INTO public.trade_deals (id, request_id, response_id, counterparty_user_id, booked_by_user_id, booking_client_action_id, product, volume, status, commercial_terms_snapshot)
+VALUES ('00000000-0000-0000-0000-00000000d501', '00000000-0000-0000-0000-00000000d201', '00000000-0000-0000-0000-00000000d401', (SELECT user_id FROM _m11_users WHERE slot = 'p4'), (SELECT user_id FROM _m11_users WHERE slot = 'o4'), '00000000-0000-0000-0000-00000000d902', 'Gold', '1KG', 'booked', '{}'::jsonb);
+
+-- Unauthenticated: no JWT claim present → unauthenticated.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', '', true);
+
+SELECT throws_ok(
+  $$SELECT public.delete_conversation('00000000-0000-0000-0000-00000000a001'::uuid)$$,
+  'P0001',
+  'unauthenticated',
+  'delete_conversation without a session raises unauthenticated'
+);
+
+RESET ROLE;
+
+-- Non-participant of an existing conversation → not_authorized (no existence leak).
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', json_build_object('sub', (SELECT user_id FROM _m11_users WHERE slot = 'o3'))::text, true);
+
+SELECT throws_ok(
+  $$SELECT public.delete_conversation('00000000-0000-0000-0000-00000000a001'::uuid)$$,
+  'P0001',
+  'not_authorized',
+  'a non-participant cannot delete another pair''s conversation'
+);
+
+RESET ROLE;
+
+-- Non-existent conversation id → identical not_authorized code.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', json_build_object('sub', (SELECT user_id FROM _m11_users WHERE slot = 'o1'))::text, true);
+
+SELECT throws_ok(
+  $$SELECT public.delete_conversation('00000000-0000-0000-0000-00000000ffff'::uuid)$$,
+  'P0001',
+  'not_authorized',
+  'a non-existent conversation id raises the same not_authorized code'
+);
+
+RESET ROLE;
+
+-- Participant deletes the simple conversation (no RFQ) — success, rows gone.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', json_build_object('sub', (SELECT user_id FROM _m11_users WHERE slot = 'o1'))::text, true);
+
+SELECT is(
+  (SELECT public.delete_conversation('00000000-0000-0000-0000-00000000a001'::uuid)),
+  jsonb_build_object('ok', true),
+  'a participant can delete a simple conversation'
+);
+
+RESET ROLE;
+
+SELECT ok(
+  NOT EXISTS (SELECT 1 FROM public.conversations WHERE id = '00000000-0000-0000-0000-00000000a001'),
+  'simple conversation is deleted'
+);
+SELECT ok(
+  NOT EXISTS (SELECT 1 FROM public.messages WHERE conversation_id = '00000000-0000-0000-0000-00000000a001'),
+  'simple conversation messages are deleted'
+);
+
+-- Double delete of the same conversation → not_authorized (row no longer exists).
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', json_build_object('sub', (SELECT user_id FROM _m11_users WHERE slot = 'o1'))::text, true);
+
+SELECT throws_ok(
+  $$SELECT public.delete_conversation('00000000-0000-0000-0000-00000000a001'::uuid)$$,
+  'P0001',
+  'not_authorized',
+  'deleting an already-deleted conversation raises not_authorized'
+);
+
+RESET ROLE;
+
+-- Unanswered RFQ invitation does not block deletion; invitation is removed,
+-- the quote_request intentionally remains (orphaned).
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', json_build_object('sub', (SELECT user_id FROM _m11_users WHERE slot = 'o2'))::text, true);
+
+SELECT is(
+  (SELECT public.delete_conversation('00000000-0000-0000-0000-00000000b001'::uuid)),
+  jsonb_build_object('ok', true),
+  'a participant can delete a conversation with an unanswered RFQ invitation'
+);
+
+RESET ROLE;
+
+SELECT ok(
+  NOT EXISTS (SELECT 1 FROM public.quote_request_invitations WHERE conversation_id = '00000000-0000-0000-0000-00000000b001'),
+  'unanswered RFQ invitation is deleted with the conversation'
+);
+SELECT ok(
+  EXISTS (SELECT 1 FROM public.quote_requests WHERE id = '00000000-0000-0000-0000-00000000b201'),
+  'quote_request survives the conversation delete (may orphan)'
+);
+
+-- Submitted RFQ response blocks deletion; all related rows remain untouched.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', json_build_object('sub', (SELECT user_id FROM _m11_users WHERE slot = 'o3'))::text, true);
+
+SELECT throws_ok(
+  $$SELECT public.delete_conversation('00000000-0000-0000-0000-00000000c001'::uuid)$$,
+  'P0001',
+  'conversation_has_activity',
+  'a conversation with a submitted RFQ response cannot be deleted'
+);
+
+RESET ROLE;
+
+SELECT ok(
+  EXISTS (SELECT 1 FROM public.conversations WHERE id = '00000000-0000-0000-0000-00000000c001'),
+  'guarded conversation remains after the refused delete'
+);
+SELECT ok(
+  EXISTS (SELECT 1 FROM public.messages WHERE conversation_id = '00000000-0000-0000-0000-00000000c001'),
+  'guarded conversation messages remain after the refused delete'
+);
+SELECT ok(
+  EXISTS (SELECT 1 FROM public.quote_request_invitations WHERE conversation_id = '00000000-0000-0000-0000-00000000c001'),
+  'guarded RFQ invitation remains after the refused delete'
+);
+SELECT ok(
+  EXISTS (SELECT 1 FROM public.quote_responses WHERE id = '00000000-0000-0000-0000-00000000c401'),
+  'guarded RFQ response remains after the refused delete'
+);
+
+-- Booked trade deal blocks deletion; the deal row remains untouched.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', json_build_object('sub', (SELECT user_id FROM _m11_users WHERE slot = 'o4'))::text, true);
+
+SELECT throws_ok(
+  $$SELECT public.delete_conversation('00000000-0000-0000-0000-00000000d001'::uuid)$$,
+  'P0001',
+  'conversation_has_activity',
+  'a conversation with a booked trade deal cannot be deleted'
+);
+
+RESET ROLE;
+
+SELECT ok(
+  EXISTS (SELECT 1 FROM public.trade_deals WHERE id = '00000000-0000-0000-0000-00000000d501'),
+  'booked trade deal remains after the refused delete'
 );
 
 SELECT * FROM finish();

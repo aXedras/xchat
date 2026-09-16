@@ -5,9 +5,12 @@ import { useMessages } from "./useMessages";
 import { useChatSynchronization } from "./useChatSynchronization";
 import { useOutgoingMessage, SendInput } from "./useOutgoingMessage";
 import { messageRepository, MessagingError } from "@/services/persistence/messageRepository";
+import { realtimeBus } from "@/services/realtimeBus";
+import { useToast } from "./use-toast";
+import i18n from "@/i18n";
 
 export function useChatState() {
-  const { activeChats, refreshChats } = useChatLists();
+  const { activeChats, refreshChats, deleteChat: deleteChatPersisted } = useChatLists();
   const { messages, setMessages } = useMessages();
 
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
@@ -17,6 +20,7 @@ export function useChatState() {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const pendingClientIds = useRef<Map<string, string>>(new Map());
+  const { toast } = useToast();
 
   const refreshParticipants = useCallback(async () => {
     setParticipants(await messageRepository.listParticipants());
@@ -30,17 +34,65 @@ export function useChatState() {
   const { send } = useOutgoingMessage({ setMessages, refreshChats });
 
   useEffect(() => {
-    void refreshParticipants().catch(() => setError("Unable to load participants"));
-    void refreshQuoteInvitations().catch(() => setError("Unable to load quote invitations"));
+    void refreshParticipants().catch(() => setError(i18n.t("errors.loadParticipants")));
+    void refreshQuoteInvitations().catch(() => setError(i18n.t("errors.loadInvitations")));
   }, [refreshParticipants, refreshQuoteInvitations]);
 
   const handleChatSelect = useCallback(
     (chat: Chat) => {
       setSelectedChat(chat);
-      void loadMessages(chat.id).catch(() => setError("Unable to load messages"));
+      void loadMessages(chat.id).catch(() => setError(i18n.t("errors.loadMessages")));
     },
     [loadMessages],
   );
+
+  const clearChat = useCallback((chatId: string) => {
+    setSelectedChat((current) => (current?.id === chatId ? null : current));
+    setMessages((previous) => {
+      const next = { ...previous };
+      delete next[chatId];
+      return next;
+    });
+    setQuoteInvitations((previous) =>
+      previous.filter((invitation) => invitation.conversationId !== chatId),
+    );
+  }, []);
+
+  const deleteChat = useCallback(
+    async (chatId: string) => {
+      const chatBeingDeleted = activeChats.find((chat) => chat.id === chatId);
+      try {
+        await deleteChatPersisted(chatId);
+        clearChat(chatId);
+        toast({
+          title: i18n.t("chat.deleteSuccessTitle"),
+          description: i18n.t("chat.deleteSuccessDescription", {
+            name: chatBeingDeleted?.name ?? "",
+          }),
+        });
+      } catch (e) {
+        const code = e instanceof MessagingError ? e.code : "unknown";
+        const descriptionKey =
+          code === "conversation_has_activity"
+            ? "errors.deleteChatHasActivity"
+            : "errors.deleteChat";
+        toast({
+          variant: "destructive",
+          title: i18n.t("errors.deleteChatTitle"),
+          description: i18n.t(descriptionKey),
+        });
+      }
+    },
+    [activeChats, deleteChatPersisted, clearChat, toast],
+  );
+
+  useEffect(() => {
+    const unsubscribe = realtimeBus.onConversationDeleted((event) => {
+      clearChat(event.conversationId);
+      void refreshChats();
+    });
+    return unsubscribe;
+  }, [clearChat, refreshChats]);
 
   const dispatchSend = useCallback(
     async (input: SendInput): Promise<SendMessagesResult | undefined> => {
@@ -53,7 +105,7 @@ export function useChatState() {
         }
         return result;
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Unable to send message");
+        setError(e instanceof Error ? e.message : i18n.t("errors.send"));
         return undefined;
       } finally {
         setSending(false);
@@ -103,7 +155,7 @@ export function useChatState() {
       const responses = await messageRepository.listQuoteResponses(invitationId);
       setQuoteResponses((previous) => ({ ...previous, [invitationId]: responses }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to load responses");
+      setError(e instanceof Error ? e.message : i18n.t("errors.loadResponses"));
     }
   }, []);
 
@@ -132,7 +184,7 @@ export function useChatState() {
         if (!(e instanceof MessagingError && e.retryable)) {
           pendingClientIds.current.delete(canonical);
         }
-        setError(e instanceof Error ? e.message : "Unable to perform action");
+        setError(e instanceof Error ? e.message : i18n.t("errors.performAction"));
         return undefined;
       }
     },
@@ -214,5 +266,6 @@ export function useChatState() {
     rejectQuote,
     bookQuote,
     setSelectedChat,
+    deleteChat,
   };
 }
