@@ -7,12 +7,14 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { ChatAvatar, getDirectChatDetails } from "@/components/chat/chatPresentation";
+import { useTranslation } from "react-i18next";
 
 interface ChatHeaderProps {
   chat: Chat;
 }
 
 const ChatHeader = ({ chat }: ChatHeaderProps) => {
+  const { t } = useTranslation();
   const chatDetails = getDirectChatDetails(chat);
 
   return (
@@ -38,11 +40,11 @@ const ChatHeader = ({ chat }: ChatHeaderProps) => {
                 <HoverCardTrigger asChild>
                   <p className="text-xs text-muted-foreground cursor-pointer">
                     {chat.members.slice(0, 3).join(", ")}
-                    {` +${chat.members.length - 3} more`}
+                    {t("chat.more", { count: chat.members.length - 3 })}
                   </p>
                 </HoverCardTrigger>
                 <HoverCardContent className="w-64 text-sm p-2">
-                  <h4 className="font-medium mb-1">Group Participants:</h4>
+                  <h4 className="font-medium mb-1">{t("chat.groupParticipants")}</h4>
                   <div className="max-h-48 overflow-y-auto">
                     <ul className="space-y-1">
                       {chat.members.map((member, index) => (

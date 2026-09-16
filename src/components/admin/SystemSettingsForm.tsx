@@ -9,8 +9,10 @@ import { systemSettingsService } from "@/services/systemSettingsService";
 import { SystemSettings } from "@/types/systemSettings";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const SystemSettingsForm = () => {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<SystemSettings>(() =>
     systemSettingsService.getSettings(),
   );
@@ -31,9 +33,7 @@ const SystemSettingsForm = () => {
       } catch (error) {
         if (!isCancelled) {
           setErrorMessage(
-            error instanceof Error
-              ? error.message
-              : "Unable to load system settings",
+            error instanceof Error ? error.message : t("adminSettings.unableLoad"),
           );
         }
       } finally {
@@ -48,7 +48,7 @@ const SystemSettingsForm = () => {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -60,14 +60,12 @@ const SystemSettingsForm = () => {
       setErrorMessage(null);
       toast.success(
         nextSettings.storageMode === "supabase-shared"
-          ? "Shared system settings saved"
-          : "System settings saved",
+          ? t("adminSettings.sharedSaved")
+          : t("adminSettings.saved"),
       );
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to save system settings";
+        error instanceof Error ? error.message : t("adminSettings.unableSave");
       setErrorMessage(message);
       toast.error(message);
     } finally {
@@ -84,14 +82,12 @@ const SystemSettingsForm = () => {
       setErrorMessage(null);
       toast.success(
         nextSettings.storageMode === "supabase-shared"
-          ? "Shared system settings reset to deployment defaults"
-          : "System settings reset to deployment defaults",
+          ? t("adminSettings.sharedResetDone")
+          : t("adminSettings.resetDone"),
       );
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to reset system settings";
+        error instanceof Error ? error.message : t("adminSettings.unableReset");
       setErrorMessage(message);
       toast.error(message);
     } finally {
@@ -103,10 +99,10 @@ const SystemSettingsForm = () => {
   const hasSupabaseConfigured = authService.isSupabaseAuthConfigured();
 
   const storageMessage = isSharedMode
-    ? "These settings are stored in Supabase and shared across authenticated users in the same environment."
+    ? t("adminSettings.storageShared")
     : hasSupabaseConfigured
-      ? "This session is using browser-local fallback. Shared settings require a Supabase-authenticated admin session."
-      : "This deployment is running without Supabase configuration, so settings are stored only in browser local storage.";
+      ? t("adminSettings.storageFallback")
+      : t("adminSettings.storageNoSupabase");
 
   return (
     <form
@@ -114,23 +110,22 @@ const SystemSettingsForm = () => {
       className="space-y-4 rounded-lg border bg-card p-4"
     >
       <div className="space-y-1">
-        <h3 className="text-lg font-medium">Bullion Integrity Ledger</h3>
+        <h3 className="text-lg font-medium">{t("adminSettings.title")}</h3>
         <p className="text-sm text-muted-foreground">
-          Seed deployment-specific connectivity from container environment
-          variables and refine the values here for demo and test use.
+          {t("adminSettings.desc")}
         </p>
       </div>
 
       <Alert>
         <AlertTitle>
-          {isSharedMode ? "Shared settings active" : "Fallback storage active"}
+          {isSharedMode ? t("adminSettings.sharedActive") : t("adminSettings.fallbackActive")}
         </AlertTitle>
         <AlertDescription>{storageMessage}</AlertDescription>
       </Alert>
 
       {errorMessage && (
         <Alert variant="destructive">
-          <AlertTitle>System settings unavailable</AlertTitle>
+          <AlertTitle>{t("adminSettings.unavailable")}</AlertTitle>
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
       )}
@@ -138,16 +133,15 @@ const SystemSettingsForm = () => {
       {isLoading ? (
         <div className="flex items-center gap-2 rounded-md border px-3 py-4 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Loading system settings...</span>
+          <span>{t("adminSettings.loadingSettings")}</span>
         </div>
       ) : (
         <>
           <div className="flex items-center justify-between rounded-md border px-3 py-2">
             <div>
-              <Label htmlFor="bil-enabled">Enable BIL connectivity</Label>
+              <Label htmlFor="bil-enabled">{t("adminSettings.enableBil")}</Label>
               <p className="text-xs text-muted-foreground">
-                Switch on when the deployment should use configured BIL access
-                details.
+                {t("adminSettings.enableBilDesc")}
               </p>
             </div>
             <Switch
@@ -165,7 +159,7 @@ const SystemSettingsForm = () => {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="bil-base-url">BIL Base URL</Label>
+              <Label htmlFor="bil-base-url">{t("adminSettings.bilBaseUrl")}</Label>
               <Input
                 id="bil-base-url"
                 placeholder="https://bil.example.com/api"
@@ -181,11 +175,11 @@ const SystemSettingsForm = () => {
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="bil-api-key">BIL API Key</Label>
+              <Label htmlFor="bil-api-key">{t("adminSettings.bilApiKey")}</Label>
               <Input
                 id="bil-api-key"
                 type="password"
-                placeholder="Enter BIL API key"
+                placeholder={t("adminSettings.bilApiKeyPlaceholder")}
                 value={settings.bil.apiKey}
                 onChange={(event) =>
                   setSettings((current) => ({
@@ -198,7 +192,7 @@ const SystemSettingsForm = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bil-network">Network</Label>
+              <Label htmlFor="bil-network">{t("adminSettings.network")}</Label>
               <Input
                 id="bil-network"
                 placeholder="production"
@@ -214,7 +208,7 @@ const SystemSettingsForm = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bil-ledger-id">Ledger ID</Label>
+              <Label htmlFor="bil-ledger-id">{t("adminSettings.ledgerId")}</Label>
               <Input
                 id="bil-ledger-id"
                 placeholder="primary-ledger"
@@ -230,7 +224,7 @@ const SystemSettingsForm = () => {
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="bil-participant-id">Participant ID</Label>
+              <Label htmlFor="bil-participant-id">{t("adminSettings.participantId")}</Label>
               <Input
                 id="bil-participant-id"
                 placeholder="vendor-desk-001"
@@ -250,11 +244,11 @@ const SystemSettingsForm = () => {
 
       {(settings.updatedAt || settings.updatedBy) && (
         <p className="text-xs text-muted-foreground">
-          Last updated{" "}
+          {t("adminSettings.lastUpdated")}{" "}
           {settings.updatedAt
             ? new Date(settings.updatedAt).toLocaleString()
-            : "unknown"}
-          {settings.updatedBy ? ` by ${settings.updatedBy}` : ""}.
+            : t("adminSettings.unknown")}
+          {settings.updatedBy ? ` ${t("adminSettings.by")} ${settings.updatedBy}` : ""}.
         </p>
       )}
 
@@ -263,12 +257,12 @@ const SystemSettingsForm = () => {
           {isSaving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
+              {t("common.saving")}
             </>
           ) : isSharedMode ? (
-            "Save shared settings"
+            t("adminSettings.saveShared")
           ) : (
-            "Save settings"
+            t("adminSettings.saveSettings")
           )}
         </Button>
         <Button
@@ -277,7 +271,7 @@ const SystemSettingsForm = () => {
           onClick={() => void handleReset()}
           disabled={isLoading || isSaving}
         >
-          Reset to defaults
+          {t("adminSettings.resetDefaults")}
         </Button>
       </div>
     </form>

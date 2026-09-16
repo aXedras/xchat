@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QuoteInvitationRecord, QuoteResponseRecord } from "@/types/chat";
+import { useTranslation } from "react-i18next";
 
 interface RfqPanelProps {
   invitation: QuoteInvitationRecord;
@@ -15,30 +16,10 @@ interface RfqPanelProps {
   onBookQuote: (invitationId: string, responseId: string) => Promise<unknown>;
 }
 
-const termLabel: Record<string, string> = {
-  quantity: "Quantity",
-  product: "Product",
-  productCode: "Code",
-  quality: "Quality",
-  location: "Location",
-  priceBasis: "Price basis",
-  premium: "Premium",
-};
-
 const statusClass: Record<string, string> = {
   open: "bg-emerald-100 text-emerald-800",
   expired: "bg-slate-200 text-slate-700",
   converted: "bg-violet-100 text-violet-800",
-};
-
-const responseStatusLabel: Record<string, string> = {
-  submitted: "Submitted",
-  countered: "Countered",
-};
-
-const decisionLabel: Record<string, string> = {
-  accepted: "Accepted",
-  rejected: "Rejected",
 };
 
 const RfqPanel = ({
@@ -52,9 +33,36 @@ const RfqPanel = ({
   onRejectQuote,
   onBookQuote,
 }: RfqPanelProps) => {
+  const { t } = useTranslation();
   const [premium, setPremium] = useState("");
   const [notes, setNotes] = useState("");
   const [counterTarget, setCounterTarget] = useState<string | null>(null);
+
+  const termLabel: Record<string, string> = {
+    quantity: t("rfq.quantity"),
+    product: t("rfq.product"),
+    productCode: t("rfq.productCode"),
+    quality: t("rfq.quality"),
+    location: t("rfq.location"),
+    priceBasis: t("rfq.priceBasis"),
+    premium: t("rfq.premium"),
+  };
+
+  const responseStatusLabel: Record<string, string> = {
+    submitted: t("rfq.submitted"),
+    countered: t("rfq.countered"),
+  };
+
+  const decisionLabel: Record<string, string> = {
+    accepted: t("rfq.accepted"),
+    rejected: t("rfq.rejected"),
+  };
+
+  const effectiveStatusLabel: Record<string, string> = {
+    open: t("rfq.statusOpen"),
+    expired: t("rfq.statusExpired"),
+    converted: t("rfq.statusConverted"),
+  };
 
   useEffect(() => {
     onLoadResponses(invitation.id);
@@ -88,7 +96,7 @@ const RfqPanel = ({
       <div className="flex items-center justify-between">
         <span className="font-semibold">RFQ</span>
         <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase ${statusClass[invitation.effectiveStatus] ?? ""}`}>
-          {invitation.effectiveStatus}
+          {effectiveStatusLabel[invitation.effectiveStatus] ?? invitation.effectiveStatus}
         </span>
       </div>
 
@@ -104,9 +112,9 @@ const RfqPanel = ({
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">Responses</p>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">{t("rfq.responses")}</p>
         {responses.length === 0 ? (
-          <p className="text-muted-foreground">No responses yet.</p>
+          <p className="text-muted-foreground">{t("rfq.noResponses")}</p>
         ) : (
           responses.map((response) => (
             <div key={response.id} className="rounded-md border border-border p-2 flex items-center justify-between gap-2">
@@ -125,17 +133,17 @@ const RfqPanel = ({
               <div className="flex gap-1">
                 {response.allowedActions.includes("counter") && (
                   <Button size="sm" variant="secondary" disabled={busy} onClick={() => setCounterTarget(response.id)}>
-                    Counter
+                    {t("rfq.counter")}
                   </Button>
                 )}
                 {response.allowedActions.includes("reject") && (
                   <Button size="sm" variant="outline" disabled={busy} onClick={() => onRejectQuote(invitation.id, response.id)}>
-                    Reject
+                    {t("rfq.reject")}
                   </Button>
                 )}
                 {response.allowedActions.includes("book") && (
                   <Button size="sm" disabled={busy} onClick={() => onBookQuote(invitation.id, response.id)}>
-                    Book Deal
+                    {t("rfq.bookDeal")}
                   </Button>
                 )}
               </div>
@@ -147,18 +155,18 @@ const RfqPanel = ({
       {invitation.effectiveStatus === "open" && ((!isOwner && !hasInitialQuote) || counterTarget) && (
         <div className="space-y-2 border-t border-border/50 pt-2">
           {counterTarget && (
-            <p className="text-xs text-muted-foreground">Countering a response. Enter your premium below.</p>
+            <p className="text-xs text-muted-foreground">{t("rfq.counteringNote")}</p>
           )}
           <div className="flex gap-2">
-            <Input value={premium} onChange={(e) => setPremium(e.target.value)} placeholder="Premium (e.g. +0.20)" />
-            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" />
+            <Input value={premium} onChange={(e) => setPremium(e.target.value)} placeholder={t("rfq.premiumPlaceholder")} />
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("rfq.notesPlaceholder")} />
             {counterTarget ? (
               <Button disabled={busy || !premium.trim()} onClick={() => void submitCounter()}>
-                Send Counter
+                {t("rfq.sendCounter")}
               </Button>
             ) : (
               <Button disabled={busy || !premium.trim()} onClick={() => void submitInitial()}>
-                Submit Quote
+                {t("rfq.submitQuote")}
               </Button>
             )}
           </div>

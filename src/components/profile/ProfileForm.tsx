@@ -15,52 +15,7 @@ import {
   zodResolver,
 } from "@/components/profile/profileFormKit";
 import { ProfileUserData } from "@/types/profile";
-
-const profileFormSchema = z.object({
-  username: z.string().min(2, {
-    message: "Username must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  role: z.string().optional(),
-});
-
-type ProfileFormValues = z.infer<typeof profileFormSchema>;
-
-const profileFieldConfig: Array<{
-  name: keyof ProfileFormValues;
-  label: string;
-  placeholder: string;
-  type?: "email";
-  description?: string;
-}> = [
-  {
-    name: "name",
-    label: "Name",
-    placeholder: "Enter your full name",
-  },
-  {
-    name: "username",
-    label: "Username",
-    placeholder: "Enter your username",
-  },
-  {
-    name: "email",
-    label: "Email",
-    placeholder: "Enter your email",
-    type: "email",
-  },
-  {
-    name: "role",
-    label: "Role",
-    placeholder: "Enter your role",
-    description: "Your role in the organization.",
-  },
-];
+import { useTranslation } from "react-i18next";
 
 interface ProfileFormProps {
   userData: ProfileUserData;
@@ -70,6 +25,54 @@ interface ProfileFormProps {
 }
 
 export const ProfileForm = ({ userData, setUserData, isEditing, setIsEditing }: ProfileFormProps) => {
+  const { t } = useTranslation();
+
+  const profileFormSchema = z.object({
+    username: z.string().min(2, {
+      message: t("profile.usernameMin"),
+    }),
+    email: z.string().email({
+      message: t("profile.invalidEmail"),
+    }),
+    name: z.string().min(2, {
+      message: t("profile.nameMin"),
+    }),
+    role: z.string().optional(),
+  });
+
+  type ProfileFormValues = z.infer<typeof profileFormSchema>;
+
+  const profileFieldConfig: Array<{
+    name: keyof ProfileFormValues;
+    label: string;
+    placeholder: string;
+    type?: "email";
+    description?: string;
+  }> = [
+    {
+      name: "name",
+      label: t("common.name"),
+      placeholder: t("profile.namePlaceholder"),
+    },
+    {
+      name: "username",
+      label: t("profile.username"),
+      placeholder: t("profile.usernamePlaceholder"),
+    },
+    {
+      name: "email",
+      label: t("common.email"),
+      placeholder: t("profile.emailPlaceholder"),
+      type: "email",
+    },
+    {
+      name: "role",
+      label: t("common.role"),
+      placeholder: t("profile.rolePlaceholder"),
+      description: t("profile.roleDesc"),
+    },
+  ];
+
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
@@ -88,14 +91,14 @@ export const ProfileForm = ({ userData, setUserData, isEditing, setIsEditing }: 
       username: data.username,
       role: data.role || "",
     });
-    toast.success("Profile updated successfully");
+    toast.success(t("profile.profileUpdated"));
     setIsEditing(false);
   };
 
   return (
     <ProfileSectionCard
-      title="Profile Information"
-      description="Update your account information and profile details."
+      title={t("profile.profileInfo")}
+      description={t("profile.profileInfoDesc")}
     >
         <Form {...profileForm}>
           <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
@@ -125,7 +128,7 @@ export const ProfileForm = ({ userData, setUserData, isEditing, setIsEditing }: 
             ))}
             
             {isEditing && (
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit">{t("profile.saveChanges")}</Button>
             )}
           </form>
         </Form>

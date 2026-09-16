@@ -4,6 +4,7 @@ import { Chat, QuoteInvitationRecord, QuoteResponseRecord } from "@/types/chat";
 import CustomerView from "./CustomerView";
 import InventoryView from "./InventoryView";
 import RfqPanel from "./RfqPanel";
+import { useTranslation } from "react-i18next";
 
 type TabId = "customer" | "rfq" | "inventory";
 
@@ -41,6 +42,7 @@ const SidePanelContainer = ({
   onRejectQuote,
   onBookQuote,
 }: SidePanelContainerProps) => {
+  const { t } = useTranslation();
   const hasRfq = invitations.length > 0;
   const [activeTab, setActiveTab] = useState<TabId>(
     hasRfq ? "rfq" : "customer",
@@ -71,9 +73,9 @@ const SidePanelContainer = ({
   }, [chat.id, hasRfq]);
 
   const tabs: Array<{ id: TabId; label: string; visible: boolean }> = [
-    { id: "customer", label: "Customer", visible: true },
-    { id: "rfq", label: "RFQ Context", visible: hasRfq },
-    { id: "inventory", label: "Inventory", visible: hasRfq },
+    { id: "customer", label: t("sidePanel.customer"), visible: true },
+    { id: "rfq", label: t("sidePanel.rfqContext"), visible: hasRfq },
+    { id: "inventory", label: t("sidePanel.inventory"), visible: hasRfq },
   ];
 
   return (

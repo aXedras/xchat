@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface MessageInputProps {
   disabled?: boolean;
@@ -9,6 +10,7 @@ interface MessageInputProps {
 }
 
 const MessageInput = ({ disabled, onSendMessage }: MessageInputProps) => {
+  const { t } = useTranslation();
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
 
@@ -38,7 +40,7 @@ const MessageInput = ({ disabled, onSendMessage }: MessageInputProps) => {
         <div className="flex-1 relative">
           <textarea
             className={cn("chat-input min-h-[52px] max-h-32 py-3 resize-none")}
-            placeholder="Type a message..."
+            placeholder={t("chat.typeMessage")}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyPress}
@@ -49,7 +51,7 @@ const MessageInput = ({ disabled, onSendMessage }: MessageInputProps) => {
         <Button
           type="button"
           size="icon"
-          aria-label="Send message"
+          aria-label={t("chat.sendMessage")}
           className={cn(
             "rounded-full transition-all duration-200",
             (!message.trim() || isSending || disabled) && "opacity-50 cursor-not-allowed",

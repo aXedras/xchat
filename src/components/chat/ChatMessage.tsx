@@ -1,6 +1,7 @@
 import { Message } from "@/types/chat";
 import { Check, CheckCheck, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface ChatMessageProps {
   message: Message;
@@ -19,20 +20,16 @@ const getStatusIcon = (status: Message["status"]) => {
   }
 };
 
-const getStatusText = (status: Message["status"]) => {
-  switch (status) {
-    case "sent":
-      return "Sent";
-    case "delivered":
-      return "Delivered";
-    case "read":
-      return "Read";
-    default:
-      return "";
-  }
+const statusKey: Record<Message["status"], string | null> = {
+  sent: "chat.sent",
+  delivered: "chat.delivered",
+  read: "chat.read",
 };
 
 const ChatMessage = ({ message }: ChatMessageProps) => {
+  const { t } = useTranslation();
+  const statusText = statusKey[message.status] ? t(statusKey[message.status]!) : "";
+
   return (
     <div className={cn("flex", message.isMine ? "justify-end" : "justify-start")}>
       <div className={cn(message.isMine ? "chat-bubble-sent" : "chat-bubble-received")}>
@@ -43,9 +40,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         <div className="text-xs mt-1 opacity-70 flex items-center justify-end gap-1">
           {message.timestamp}
           {message.isMine && (
-            <div className="flex items-center ml-1 gap-0.5" title={getStatusText(message.status)}>
+            <div className="flex items-center ml-1 gap-0.5" title={statusText}>
               {getStatusIcon(message.status)}
-              <span className="text-[10px] text-muted-foreground ml-0.5">{getStatusText(message.status)}</span>
+              <span className="text-[10px] text-muted-foreground ml-0.5">{statusText}</span>
             </div>
           )}
         </div>

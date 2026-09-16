@@ -11,6 +11,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { FeeRule } from "@/types/chat";
 import { Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { feeTypeOptions, productClassOptions, RuleErrors } from "./formConfig";
 
 interface FeeRuleEditorProps {
@@ -21,22 +22,26 @@ interface FeeRuleEditorProps {
 }
 
 export function FeeRuleEditor({ rule, errors, onChange, onDelete }: Readonly<FeeRuleEditorProps>) {
+  const { t } = useTranslation();
+
+  const errorText = (key?: string) => (key ? t(key) : undefined);
+
   return (
     <div className="grid gap-2 rounded-md border bg-background p-3 lg:grid-cols-8">
       <div className="space-y-1 lg:col-span-2">
-        <Label>Fee Label</Label>
+        <Label>{t("adminFees.feeLabel")}</Label>
         <Input
           value={rule.label}
           onChange={(event) => onChange(rule.id, { label: event.target.value })}
-          placeholder="Handling Fee"
+          placeholder={t("adminFees.handlingFee")}
           aria-invalid={!!errors?.label}
           className={errors?.label ? "border-destructive" : ""}
         />
-        {errors?.label && <p role="alert" className="text-xs text-destructive">{errors.label}</p>}
+        {errors?.label && <p role="alert" className="text-xs text-destructive">{errorText(errors.label)}</p>}
       </div>
 
       <div className="space-y-1">
-        <Label>Type</Label>
+        <Label>{t("adminFees.type")}</Label>
         <Select value={rule.type} onValueChange={(value: FeeRule["type"]) => onChange(rule.id, { type: value })}>
           <SelectTrigger>
             <SelectValue />
@@ -44,7 +49,7 @@ export function FeeRuleEditor({ rule, errors, onChange, onDelete }: Readonly<Fee
           <SelectContent>
             {feeTypeOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -52,7 +57,7 @@ export function FeeRuleEditor({ rule, errors, onChange, onDelete }: Readonly<Fee
       </div>
 
       <div className="space-y-1">
-        <Label>Value</Label>
+        <Label>{t("adminFees.value")}</Label>
         <Input
           type="number"
           step="0.01"
@@ -62,11 +67,11 @@ export function FeeRuleEditor({ rule, errors, onChange, onDelete }: Readonly<Fee
           aria-invalid={!!errors?.value}
           className={errors?.value ? "border-destructive" : ""}
         />
-        {errors?.value && <p role="alert" className="text-xs text-destructive">{errors.value}</p>}
+        {errors?.value && <p role="alert" className="text-xs text-destructive">{errorText(errors.value)}</p>}
       </div>
 
       <div className="space-y-1">
-        <Label>Product</Label>
+        <Label>{t("adminFees.product")}</Label>
         <Select value={rule.productClass} onValueChange={(value: FeeRule["productClass"]) => onChange(rule.id, { productClass: value })}>
           <SelectTrigger>
             <SelectValue />
@@ -74,7 +79,7 @@ export function FeeRuleEditor({ rule, errors, onChange, onDelete }: Readonly<Fee
           <SelectContent>
             {productClassOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -82,7 +87,7 @@ export function FeeRuleEditor({ rule, errors, onChange, onDelete }: Readonly<Fee
       </div>
 
       <div className="space-y-1">
-        <Label>Priority</Label>
+        <Label>{t("adminFees.priority")}</Label>
         <Input
           type="number"
           step="1"
@@ -91,11 +96,11 @@ export function FeeRuleEditor({ rule, errors, onChange, onDelete }: Readonly<Fee
           aria-invalid={!!errors?.priority}
           className={errors?.priority ? "border-destructive" : ""}
         />
-        {errors?.priority && <p role="alert" className="text-xs text-destructive">{errors.priority}</p>}
+        {errors?.priority && <p role="alert" className="text-xs text-destructive">{errorText(errors.priority)}</p>}
       </div>
 
       <div className="space-y-1">
-        <Label>Min Qty</Label>
+        <Label>{t("adminFees.minQty")}</Label>
         <Input
           type="number"
           step="0.01"
@@ -105,11 +110,11 @@ export function FeeRuleEditor({ rule, errors, onChange, onDelete }: Readonly<Fee
           aria-invalid={!!errors?.minimumQuantity}
           className={errors?.minimumQuantity ? "border-destructive" : ""}
         />
-        {errors?.minimumQuantity && <p role="alert" className="text-xs text-destructive">{errors.minimumQuantity}</p>}
+        {errors?.minimumQuantity && <p role="alert" className="text-xs text-destructive">{errorText(errors.minimumQuantity)}</p>}
       </div>
 
       <div className="space-y-1">
-        <Label>Valid From</Label>
+        <Label>{t("adminFees.validFrom")}</Label>
         <Input
           type="date"
           value={rule.validFrom ?? ""}
@@ -120,7 +125,7 @@ export function FeeRuleEditor({ rule, errors, onChange, onDelete }: Readonly<Fee
       </div>
 
       <div className="space-y-1">
-        <Label>Valid To</Label>
+        <Label>{t("adminFees.validTo")}</Label>
         <Input
           type="date"
           value={rule.validTo ?? ""}
@@ -128,13 +133,13 @@ export function FeeRuleEditor({ rule, errors, onChange, onDelete }: Readonly<Fee
           aria-invalid={!!errors?.validRange}
           className={errors?.validRange ? "border-destructive" : ""}
         />
-        {errors?.validRange && <p role="alert" className="text-xs text-destructive lg:col-span-2">{errors.validRange}</p>}
+        {errors?.validRange && <p role="alert" className="text-xs text-destructive lg:col-span-2">{errorText(errors.validRange)}</p>}
       </div>
 
       <div className="flex items-end justify-between gap-3 lg:col-span-8">
         <div className="flex items-center gap-2 pb-2">
           <Switch checked={rule.active} onCheckedChange={(checked) => onChange(rule.id, { active: checked })} />
-          <span className="text-sm text-muted-foreground">Active</span>
+          <span className="text-sm text-muted-foreground">{t("common.active")}</span>
         </div>
         <Button type="button" variant="ghost" size="icon" onClick={() => onDelete(rule.id)}>
           <Trash2 className="h-4 w-4" />
