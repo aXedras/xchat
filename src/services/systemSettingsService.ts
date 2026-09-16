@@ -78,7 +78,7 @@ function buildSeedSettings() {
 function canUseSharedSettings() {
   return (
     !!getSupabaseBrowserClient() &&
-    authService.getAppIdentity()?.mode === "supabase"
+    !!authService.getAppIdentity()
   );
 }
 
