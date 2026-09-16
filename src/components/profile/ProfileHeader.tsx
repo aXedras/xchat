@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Edit, Upload } from "lucide-react";
 import { getInitials } from "@/utils/format";
-import { fileToBase64, validateImageFile } from "@/utils/fileUtils";
+import { fileToResizedDataUrl, validateImageFile } from "@/utils/fileUtils";
 import { toast } from "sonner";
 import { ProfileUserData } from "@/types/profile";
 import { useTranslation } from "react-i18next";
@@ -44,7 +44,7 @@ const ProfileHeader = ({
     }
 
     try {
-      const base64 = await fileToBase64(file);
+      const base64 = await fileToResizedDataUrl(file, 256);
 
       await updateMyAvatar(base64);
       authService.setAvatarUrl(base64);
@@ -98,7 +98,9 @@ const ProfileHeader = ({
 
       <div className="flex-1 space-y-2">
         <h1 className="text-3xl font-bold">{userData.name}</h1>
-        <p className="text-muted-foreground">{userData.role}</p>
+        {userData.role && (
+          <p className="text-muted-foreground">{userData.role}</p>
+        )}
         <p className="text-muted-foreground">{userData.email}</p>
         <div className="flex gap-2 mt-4">
           <Button

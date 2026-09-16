@@ -97,6 +97,13 @@ async function loadProfileAvatar(): Promise<string | null> {
   }
 }
 
+function stripAvatarUrl(
+  identity: AppAuthIdentity,
+): Omit<AppAuthIdentity, "avatarUrl"> {
+  const { avatarUrl: _avatarUrl, ...rest } = identity;
+  return rest;
+}
+
 function persistAppIdentity(identity: AppAuthIdentity | null) {
   appIdentity = identity;
 
@@ -105,10 +112,17 @@ function persistAppIdentity(identity: AppAuthIdentity | null) {
     return;
   }
 
-  if (identity) {
-    localStorage.setItem(APP_AUTH_STORAGE_KEY, JSON.stringify(identity));
-  } else {
-    localStorage.removeItem(APP_AUTH_STORAGE_KEY);
+  try {
+    if (identity) {
+      localStorage.setItem(
+        APP_AUTH_STORAGE_KEY,
+        JSON.stringify(stripAvatarUrl(identity)),
+      );
+    } else {
+      localStorage.removeItem(APP_AUTH_STORAGE_KEY);
+    }
+  } catch (error) {
+    logger.error("Unable to persist app identity to localStorage", { error });
   }
 
   notifyAppAuthChanged(identity);
@@ -191,9 +205,8 @@ export const authService = {
         // get_my_role synchronously inside onAuthStateChange re-enters the
         // lock and deadlocks with getSession() on a full page reload.
         setTimeout(() => {
-          void resolveCurrentUserRole().then(async (role) => {
-            const avatarUrl =
-              (await loadProfileAvatar()) ?? appIdentity?.avatarUrl;
+          void resolveCurrentUserRole().then((role) => {
+            const avatarUrl = appIdentity?.avatarUrl;
 
             persistAppIdentity({
               role,

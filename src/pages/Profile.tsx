@@ -10,12 +10,16 @@ import { logger } from "@/services/logger";
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
 
+  const identity = authService.getAppIdentity();
+  const email = identity?.email ?? "";
+  const username = email.split("@")[0].toLowerCase();
+
   const [userData, setUserData] = useState<ProfileUserData>({
-    name: "Jane Doe",
-    email: "jane.doe@example.com",
-    username: "janedoe",
-    role: "Product Manager",
-    avatarUrl: authService.getAppIdentity()?.avatarUrl ?? "",
+    name: identity?.displayName ?? "",
+    email,
+    username,
+    role: "",
+    avatarUrl: identity?.avatarUrl ?? "",
   });
 
   useEffect(() => {
