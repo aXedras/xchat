@@ -57,7 +57,9 @@ const Dashboard = () => {
   };
 
   const handleRequestDeleteChat = (chatId: string) => {
-    setPendingDeleteChat(activeChats.find((chat) => chat.id === chatId) ?? null);
+    setPendingDeleteChat(
+      activeChats.find((chat) => chat.id === chatId) ?? null,
+    );
   };
 
   const handleConfirmDeleteChat = async () => {
