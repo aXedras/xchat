@@ -26,6 +26,7 @@ supabase/.branches
 playwright-report
 test-results
 blob-report
+graphify-out
 
 # Editor directories and files
 .vscode/*
