@@ -29,8 +29,8 @@
     "semgrep:owasp": "sh ./scripts/run-semgrep.sh --config p/owasp-top-ten --error .",
     "semgrep:ci": "sh ./scripts/run-semgrep.sh --config .semgrep/architecture.yml --config p/owasp-top-ten --error --sarif --output semgrep.sarif .",
     "docker:build:ci": "docker build -t xchat:ci .",
-    "ci:verify": "npm run lint && npm run build && npm run jscpd && npm run semgrep:arch",
-    "hooks:pre-commit": "npx lint-staged --concurrent false && npm run jscpd && npm run semgrep:arch",
+    "ci:verify": "npm run lint && npm run build && npm run jscpd && npm run depcruise && npm run semgrep:arch",
+    "hooks:pre-commit": "npx lint-staged --concurrent false && npm run ci:verify && npm run supabase:test",
     "prepare": "husky"
   },
   "lint-staged": {
