@@ -13,6 +13,11 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      deploy_integration:
+        description: Deploy the selected commit to Integration
+        required: true
+        type: boolean
+        default: false
       deploy_production:
         description: Deploy the selected commit to Production
         required: true
@@ -247,6 +252,7 @@ jobs:
   ghcr-publish:
     if: >-
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_integration == true) ||
       (github.event_name == 'workflow_dispatch' && inputs.deploy_production == true)
     needs:
       - quality
@@ -284,7 +290,9 @@ jobs:
 
   deploy-integration:
     name: Deploy Integration
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_integration == true)
     needs: ghcr-publish
     runs-on: ubuntu-latest
     concurrency:
