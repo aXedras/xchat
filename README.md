@@ -64,10 +64,12 @@ Then access the application at `http://localhost:8080` in your browser.
 
 ### Pulling the Demo Image from GHCR
 
-Pushes to `main` now publish a Linux AMD64 image to GitHub Container Registry:
+Deployable pushes to `main` publish one Linux AMD64 image to GitHub Container
+Registry, addressed by its commit SHA. The deployment workflow passes the
+resulting digest to Coolify; it does not publish or promote `latest`.
 
 ```sh
-docker pull ghcr.io/marcopersi/xchat:latest
+docker pull ghcr.io/marcopersi/xchat:<commit-sha>
 ```
 
 Example VM deployment with runtime configuration:
@@ -81,12 +83,13 @@ docker run -d --name xchat \
    -e XCHAT_BIL_BASE_URL=https://bil.example.com/api \
    -e XCHAT_BIL_NETWORK=production \
    -e XCHAT_BIL_PARTICIPANT_ID=vendor-desk-001 \
-   ghcr.io/marcopersi/xchat:latest
+   ghcr.io/marcopersi/xchat:<commit-sha>
 ```
 
 Or with Docker Compose on the VM:
 
 ```sh
+export XCHAT_IMAGE_REFERENCE=ghcr.io/marcopersi/xchat@sha256:<digest>
 docker compose -f docker-compose.ghcr.yml up -d
 ```
 
@@ -107,8 +110,9 @@ The bundle supports two runtime modes:
 Fastest one-off start with `docker run`:
 
 ```powershell
-docker pull ghcr.io/marcopersi/xchat:latest
-docker run -d --name xchat -p 8080:8080 ghcr.io/marcopersi/xchat:latest
+$env:XCHAT_IMAGE_REFERENCE = "ghcr.io/marcopersi/xchat@sha256:<digest>"
+docker pull $env:XCHAT_IMAGE_REFERENCE
+docker run -d --name xchat -p 8080:8080 $env:XCHAT_IMAGE_REFERENCE
 ```
 
 Repeatable Windows VM setup with `docker compose`:
@@ -125,7 +129,8 @@ For external Supabase mode, start from the dedicated template instead:
 
 The installer only creates `.env.windows` automatically when it does not exist yet. Once the file exists, your local edits are preserved across repeated runs.
 
-The compose bundle now supports `XCHAT_IMAGE_TAG`, which defaults to `latest` and can be pinned to a release tag such as `v1.2.3`.
+The compose bundle requires `XCHAT_IMAGE_REFERENCE`; use an immutable GHCR
+digest for controlled deployments.
 
 If you want a ready-to-copy ZIP instead of manually collecting the files, build it locally with:
 
@@ -179,9 +184,25 @@ Runtime notes:
 - A ready-to-use compose file is available in `docker-compose.ghcr.yml`.
   The GHCR push uses the repository-scoped `GITHUB_TOKEN`, so no extra DockerHub secrets are required for the default image publication path.
 
+### Coolify Deployment
+
+RFC 019 configures `main` to deploy Integration automatically and provides an
+explicit `deploy_production` workflow-dispatch input for Production. The
+proposed domains are `https://xchat.int.axdev.ch` and `https://xchat.axdev.ch`.
+
+Before enabling either deployment, configure the dedicated Coolify application
+for each environment with the environment-specific values referenced by
+`docker-compose.coolify.yml`:
+`XCHAT_SUPABASE_URL`, `XCHAT_SUPABASE_PUBLISHABLE_KEY`,
+`XCHAT_SUPABASE_AUTH_REDIRECT_URL`, `XCHAT_VENDOR_ADMIN_EMAIL`, and
+`XCHAT_VENDOR_ADMIN_PASSWORD`. These are runtime secrets and must not be added
+to GitHub, Compose files, or the image. Integration deploys automatically from
+`main`; Production is deployed only by the workflow dispatch input.
+
 ## CI/CD Pipeline
 
-This repository includes one GitHub Actions workflow with one job that runs the full gate in a single pass:
+The primary GitHub Actions workflow runs the full quality and security gate before
+publishing or deploying an image:
 
 1. ESLint
 2. Production build
@@ -194,7 +215,10 @@ This repository includes one GitHub Actions workflow with one job that runs the 
 
 The workflow runs automatically when code is pushed to the main branch or when a pull request is created.
 
-On pushes to `main`, the workflow also publishes the Docker image to `ghcr.io/marcopersi/xchat` with the tags `latest` and the full commit SHA.
+On pushes to `main`, the workflow publishes one Docker image to
+`ghcr.io/marcopersi/xchat` under the full commit SHA and deploys that image by
+digest to Integration. Production uses the same path only when explicitly
+dispatched with `deploy_production=true`.
 
 Generated artifacts such as `reports/`, `semgrep.sarif`, Playwright reports, build output, and Supabase temp files are intentionally ignored via `.gitignore` and uploaded by CI instead of being committed.
 
