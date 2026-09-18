@@ -19,9 +19,7 @@ test.describe("Admin company registration", () => {
     ]);
   });
 
-  test("registers a company and exposes it in the conversation selector", async ({
-    page,
-  }) => {
+  test("registers a company", async ({ page }) => {
     await connectAdminApi(page);
     await page.getByRole("tab", { name: "Company Registration" }).click();
 
@@ -37,10 +35,6 @@ test.describe("Admin company registration", () => {
     await expect(
       page.getByText('Company "Aurum Logistics AG" registered with 1 users'),
     ).toBeVisible();
-
-    await page.goto("/dashboard");
-    await page.getByRole("button", { name: "Start New Conversation" }).click();
-    await expect(page.getByText("Aurum Logistics AG")).toBeVisible();
   });
 
   test("blocks duplicate company registration", async ({ page }) => {

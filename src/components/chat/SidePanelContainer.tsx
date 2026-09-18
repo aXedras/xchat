@@ -1,81 +1,65 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CounterpartyInsight, QuoteRequest, QuoteResponse, TradeDeal } from "@/types/chat";
-import AskContextPanel from "./AskContextPanel";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+import { Chat, QuoteInvitationRecord } from "@/types/chat";
 import CustomerView from "./CustomerView";
 import InventoryView from "./InventoryView";
-import { BookUser, ClipboardList, Warehouse } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
+type TabId = "customer" | "inventory";
 
 interface SidePanelContainerProps {
-  chatId: string;
-  insight?: CounterpartyInsight;
-  quoteRequest?: QuoteRequest;
-  responses?: QuoteResponse[];
-  deals?: TradeDeal[];
-  onRespond?: (requestId: string) => void;
-  onCounterResponse?: (requestId: string, responseId: string) => void;
-  onRejectResponse?: (requestId: string, responseId: string) => void;
-  onConvertToDeal?: (requestId: string, responseId: string) => void;
+  chat: Chat;
+  invitations: QuoteInvitationRecord[];
 }
 
-const SidePanelContainer = ({
-  chatId,
-  insight,
-  quoteRequest,
-  responses,
-  deals,
-  onRespond,
-  onCounterResponse,
-  onRejectResponse,
-  onConvertToDeal,
-}: SidePanelContainerProps) => {
-  const hasActiveRfq = !!quoteRequest;
-  const defaultTab = hasActiveRfq ? "rfq" : "customer";
+const SidePanelContainer = ({ chat, invitations }: SidePanelContainerProps) => {
+  const { t } = useTranslation();
+  const hasRfq = invitations.length > 0;
+  const [activeTab, setActiveTab] = useState<TabId>("customer");
+  const prevChatIdRef = useRef(chat.id);
+
+  useEffect(() => {
+    const prevChatId = prevChatIdRef.current;
+    prevChatIdRef.current = chat.id;
+
+    if (chat.id !== prevChatId) {
+      // Chat switch: fall back to the default tab.
+      setActiveTab("customer");
+    }
+  }, [chat.id]);
+
+  const tabs: Array<{ id: TabId; label: string; visible: boolean }> = [
+    { id: "customer", label: t("sidePanel.customer"), visible: true },
+    { id: "inventory", label: t("sidePanel.inventory"), visible: hasRfq },
+  ];
 
   return (
-    <aside className="flex flex-col border-t border-border bg-background xl:w-96 xl:border-l xl:border-t-0">
-      <Tabs defaultValue={defaultTab} className="flex h-full flex-col">
-        <TabsList className="mx-4 mt-3 shrink-0">
-          <TabsTrigger value="customer" className="gap-1.5">
-            <BookUser className="h-3.5 w-3.5" />
-            Customer
-          </TabsTrigger>
-          {hasActiveRfq && (
-            <>
-              <TabsTrigger value="rfq" className="gap-1.5">
-                <ClipboardList className="h-3.5 w-3.5" />
-                RFQ
-              </TabsTrigger>
-              <TabsTrigger value="inventory" className="gap-1.5">
-                <Warehouse className="h-3.5 w-3.5" />
-                Inventory
-              </TabsTrigger>
-            </>
-          )}
-        </TabsList>
-        <TabsContent value="customer" className="mt-0 min-h-0 flex-1">
-          <CustomerView chatId={chatId} insight={insight} />
-        </TabsContent>
-        {hasActiveRfq && (
-          <>
-            <TabsContent value="rfq" className="mt-0 min-h-0 flex-1">
-              <AskContextPanel
-                quoteRequest={quoteRequest}
-                responses={responses}
-                deals={deals}
-                insight={insight}
-                onRespond={onRespond}
-                onCounterResponse={onCounterResponse}
-                onRejectResponse={onRejectResponse}
-                onConvertToDeal={onConvertToDeal}
-              />
-            </TabsContent>
-            <TabsContent value="inventory" className="mt-0 min-h-0 flex-1">
-              <InventoryView />
-            </TabsContent>
-          </>
-        )}
-      </Tabs>
-    </aside>
+    <div className="border-l border-border flex flex-col w-full xl:w-96 min-h-0">
+      <div className="flex border-b border-border">
+        {tabs
+          .filter((tab) => tab.visible)
+          .map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "px-3 py-2 text-sm transition-colors",
+                activeTab === tab.id
+                  ? "border-b-2 border-primary font-medium text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {activeTab === "customer" && <CustomerView chat={chat} />}
+        {activeTab === "inventory" && <InventoryView />}
+      </div>
+    </div>
   );
 };
 

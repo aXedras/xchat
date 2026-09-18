@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/context-menu";
 import { Archive, Trash2, CornerUpLeft } from "lucide-react";
 import { Chat } from "@/types/chat";
+import { useTranslation } from "react-i18next";
 
 interface ChatContextMenuProps {
   chat: Chat;
@@ -26,6 +27,8 @@ const ChatContextMenu = ({
   onRestore, 
   isArchived = false 
 }: ChatContextMenuProps) => {
+  const { t } = useTranslation();
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
@@ -36,7 +39,7 @@ const ChatContextMenu = ({
             onClick={() => onArchive(chat.id)}
           >
             <Archive className="mr-2 h-4 w-4" />
-            <span>Archive chat</span>
+            <span>{t("chat.archiveChat")}</span>
           </ContextMenuItem>
         )}
         
@@ -46,7 +49,7 @@ const ChatContextMenu = ({
             onClick={() => onRestore(chat.id)}
           >
             <CornerUpLeft className="mr-2 h-4 w-4" />
-            <span>Restore chat</span>
+            <span>{t("chat.restoreChat")}</span>
           </ContextMenuItem>
         )}
         
@@ -56,7 +59,7 @@ const ChatContextMenu = ({
           onClick={() => onDelete(chat.id)}
         >
           <Trash2 className="mr-2 h-4 w-4" />
-          <span>Delete chat</span>
+          <span>{t("chat.deleteChat")}</span>
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

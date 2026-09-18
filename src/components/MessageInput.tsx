@@ -1,107 +1,117 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Paperclip, Send, Smile } from "lucide-react";
+import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { isQuoteRequestMacro, parseAskMacro } from "@/utils/askMacro";
+import { useTranslation } from "react-i18next";
+import RfqComposer from "@/components/chat/RfqComposer";
+import { RfqTerms } from "@/types/chat";
 
 interface MessageInputProps {
-  chatId: string;
-  onSendMessage?: (content: string) => void;
+  disabled?: boolean;
+  onSendMessage?: (content: string) => Promise<boolean> | boolean;
+  onSendRfq?: (terms: RfqTerms, content: string) => Promise<boolean> | boolean;
 }
 
-const MessageInput = ({ chatId, onSendMessage }: MessageInputProps) => {
+const RFQ_MACROS = new Set(["rfq", "/rfq"]);
+
+const MessageInput = ({ disabled, onSendMessage, onSendRfq }: MessageInputProps) => {
+  const { t } = useTranslation();
   const [message, setMessage] = useState("");
+  const [mode, setMode] = useState<"standard" | "rfq">("standard");
   const [isSending, setIsSending] = useState(false);
-  
-  const handleSendMessage = () => {
-    if (!message.trim()) return;
-    
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || isSending) return;
     setIsSending(true);
-    
-    // Call the onSendMessage callback if provided
-    if (onSendMessage) {
-      onSendMessage(message.trim());
-    }
-    
-    // Simulate sending a message
-    setTimeout(() => {
-      setMessage("");
+    try {
+      const sent = await onSendMessage?.(message.trim());
+      if (sent === true) {
+        setMessage("");
+      }
+    } finally {
       setIsSending(false);
-      toast.success("Message sent");
-    }, 500);
+    }
   };
-  
+
+  const handleSendRfq = async (terms: RfqTerms, content: string) => {
+    if (isSending) return;
+    setIsSending(true);
+    try {
+      const sent = await onSendRfq?.(terms, content);
+      if (sent === true) {
+        setMode("standard");
+        setMessage("");
+      }
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const submitCurrentMessage = () => {
+    if (RFQ_MACROS.has(message.trim().toLowerCase())) {
+      setMode("rfq");
+      setMessage("");
+      return;
+    }
+    void handleSendMessage();
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      submitCurrentMessage();
     }
   };
-  
-  const checkForMacros = (text: string) => {
-    if (isQuoteRequestMacro(text) ||
-        text.startsWith("BID ") || 
-        text.startsWith("OFFER ") ||
-        text.includes("Airwaybill") ||
-        text.includes("CoO for") ||
-        text.includes("Analysis for")) {
-      return true;
-    }
-    return false;
-  };
-  
-  const hasMacro = checkForMacros(message);
-  const quoteRequest = parseAskMacro(message);
 
   return (
     <div className="p-4 border-t border-border">
-      {hasMacro && (
-        <div className="mb-2 p-2 bg-amber-50 text-amber-700 rounded-md text-sm flex items-center">
-          <span className="font-medium mr-1">Macro detected:</span> 
-          {quoteRequest
-            ? `${quoteRequest.macroType} quote request for ${quoteRequest.quantity} ${quoteRequest.product} will be expanded for the recipient`
-            : "Your message appears to contain industry-specific shorthand"}
+      {mode === "rfq" ? (
+        <div className="space-y-2">
+          <RfqComposer
+            disabled={disabled || isSending}
+            onSubmit={(terms, content) => void handleSendRfq(terms, content)}
+          />
+          <div className="flex gap-1 text-xs">
+            <button
+              type="button"
+              className="px-2 py-1 rounded hover:bg-accent"
+              onClick={() => setMode("standard")}
+            >
+              {t("composer.message")}
+            </button>
+            <span className="px-2 py-1 rounded bg-primary text-primary-foreground">
+              {t("composer.rfq")}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-end gap-2">
+          <div className="flex-1 relative">
+            <textarea
+              className={cn("chat-input min-h-[52px] max-h-32 py-3 resize-none")}
+              placeholder={t("chat.typeMessage")}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleKeyPress}
+              rows={1}
+            />
+          </div>
+
+          <Button
+            type="button"
+            size="icon"
+            aria-label={t("chat.sendMessage")}
+            className={cn(
+              "rounded-full transition-all duration-200",
+              (!message.trim() || isSending || disabled) && "opacity-50 cursor-not-allowed",
+            )}
+            disabled={!message.trim() || isSending || disabled}
+            onClick={submitCurrentMessage}
+          >
+            <Send className="h-5 w-5" />
+          </Button>
         </div>
       )}
-      
-      <div className="flex items-end gap-2">
-        <Button variant="ghost" size="icon" type="button">
-          <Paperclip className="h-5 w-5 text-muted-foreground" />
-        </Button>
-        
-        <div className="flex-1 relative">
-          <textarea
-            className={cn(
-              "chat-input min-h-[52px] max-h-32 py-3 resize-none",
-              hasMacro && "border-amber-300"
-            )}
-            placeholder="Type a message..."
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyPress}
-            rows={1}
-          />
-        </div>
-        
-        <Button variant="ghost" size="icon" type="button">
-          <Smile className="h-5 w-5 text-muted-foreground" />
-        </Button>
-        
-        <Button 
-          type="button" 
-          size="icon" 
-          className={cn(
-            "rounded-full transition-all duration-200",
-            !message.trim() && "opacity-50 cursor-not-allowed"
-          )}
-          disabled={!message.trim() || isSending}
-          onClick={handleSendMessage}
-        >
-          <Send className="h-5 w-5" />
-        </Button>
-      </div>
     </div>
   );
 };

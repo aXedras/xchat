@@ -1,58 +1,70 @@
-
-import { useRef, useEffect } from "react";
-import { Message, QuoteRequest, QuoteResponse, TradeDeal } from "@/types/chat";
-import ChatMessage from "./ChatMessage";
+import { useRef, useEffect, useMemo } from "react";
+import { Message, QuoteInvitationRecord, QuoteResponseRecord } from "@/types/chat";
+import ChatMessage, { RfqMessageContext } from "./ChatMessage";
 import EmptyState from "./EmptyState";
-import TypingIndicator from "./TypingIndicator";
-import { resolveQuoteRequest } from "@/utils/quoteRequest";
 
 interface MessageListProps {
-  chatId: string;
   messages: Message[];
-  isTyping?: boolean;
-  chatName?: string;
-  quoteRequestsById?: Record<string, QuoteRequest>;
-  quoteResponsesByRequest?: Record<string, QuoteResponse[]>;
-  tradeDealsByRequest?: Record<string, TradeDeal[]>;
-  onRespondToQuoteRequest?: (requestId: string) => void;
-  onConvertQuoteResponseToDeal?: (requestId: string, responseId: string) => void;
+  invitations: QuoteInvitationRecord[];
+  responses: Record<string, QuoteResponseRecord[]>;
+  currentUserId: string | null;
+  busy: boolean;
+  onLoadResponses: (invitationId: string) => void;
+  onSubmitQuote: (invitationId: string, premium: string, notes?: string | null) => Promise<unknown>;
+  onCounterQuote: (invitationId: string, parentResponseId: string, premium: string, notes?: string | null) => Promise<unknown>;
+  onRejectQuote: (invitationId: string, responseId: string) => Promise<unknown>;
+  onBookQuote: (invitationId: string, responseId: string) => Promise<unknown>;
 }
 
-const MessageList = ({ chatId, messages, isTyping, chatName = "User", quoteRequestsById, quoteResponsesByRequest, tradeDealsByRequest, onRespondToQuoteRequest, onConvertQuoteResponseToDeal }: MessageListProps) => {
+const MessageList = ({
+  messages,
+  invitations,
+  responses,
+  currentUserId,
+  busy,
+  onLoadResponses,
+  onSubmitQuote,
+  onCounterQuote,
+  onRejectQuote,
+  onBookQuote,
+}: MessageListProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const companyName = chatName.split(" - ")[1];
-  
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
+  }, [messages]);
 
-  if (messages.length === 0 && !isTyping) {
+  const invitationByMessageId = useMemo(
+    () =>
+      new Map(invitations.map((invitation) => [invitation.messageId, invitation])),
+    [invitations],
+  );
+
+  if (messages.length === 0) {
     return <EmptyState />;
   }
 
   return (
     <div className="flex-1 p-4 overflow-y-auto scroll-hidden bg-accent/10">
       <div className="space-y-4">
-        {messages.map((message) => (
-          (() => {
-            const quoteRequest = resolveQuoteRequest(message, chatId, quoteRequestsById, companyName);
+        {messages.map((message) => {
+          const invitation = invitationByMessageId.get(message.id);
+          const rfq: RfqMessageContext | undefined = invitation
+            ? {
+                invitation,
+                responses: responses[invitation.id] ?? [],
+                isOwner: !!currentUserId && invitation.ownerUserId === currentUserId,
+                busy,
+                onLoadResponses,
+                onSubmitQuote,
+                onCounterQuote,
+                onRejectQuote,
+                onBookQuote,
+              }
+            : undefined;
 
-            return (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                quoteRequest={quoteRequest}
-                responses={quoteRequest ? quoteResponsesByRequest?.[quoteRequest.id] : undefined}
-                deals={quoteRequest ? tradeDealsByRequest?.[quoteRequest.id] : undefined}
-                onRespond={onRespondToQuoteRequest}
-                onConvertToDeal={onConvertQuoteResponseToDeal}
-              />
-            );
-          })()
-        ))}
-        {isTyping && (
-          <TypingIndicator name={chatName.split(" - ")[0]} />
-        )}
+          return <ChatMessage key={message.id} message={message} rfq={rfq} />;
+        })}
         <div ref={messagesEndRef} />
       </div>
     </div>

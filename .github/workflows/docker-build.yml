@@ -30,10 +30,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "20"
           cache: "npm"
@@ -41,15 +41,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run lint, build and duplication checks
-        run: npm run lint && npm run build && npm run jscpd
+      - name: Run lint, build, duplication and dependency checks
+        run: npm run lint && npm run build && npm run jscpd && npm run depcruise
 
       - name: Validate deployment files
         run: npm run deployment:validate
 
       - name: Upload quality reports
         if: always() && github.actor != 'nektos/act'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: quality-reports
           path: |
@@ -61,16 +61,16 @@ jobs:
 
     steps:
       - name: Checkout code
-         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Node.js
-         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "20"
           cache: "npm"
 
       - name: Setup Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
 
@@ -86,7 +86,7 @@ jobs:
       - name: Detect GitHub code scanning availability
         id: code-scanning
         if: always() && github.actor != 'nektos/act' && hashFiles('semgrep.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             try {
@@ -113,13 +113,13 @@ jobs:
       - name: Upload Semgrep SARIF
         if: always() && steps.code-scanning.outputs.enabled == 'true'
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@3ea06614dafe36dec890db3446326e0d40ce53d4
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: semgrep.sarif
 
       - name: Upload Semgrep reports
         if: always() && github.actor != 'nektos/act'
-         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: semgrep-reports
           path: |
@@ -131,10 +131,10 @@ jobs:
 
     steps:
       - name: Checkout code
-         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Node.js
-         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "20"
           cache: "npm"
@@ -145,16 +145,53 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start --exclude imgproxy,pooler
+
+      - name: Capture local Supabase connection details
+        run: >-
+          supabase status -o json |
+          jq -r 'to_entries[] | "\(.key)=\(.value)"' >> "$GITHUB_ENV"
+
+      - name: Reset database (apply migrations)
+        run: supabase db reset
+
+      - name: Wait for Supabase API gateway
+        run: |
+          # `supabase db reset` restarts containers internally, so the
+          # gateway must be re-checked here rather than only once after
+          # `supabase start`.
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent "${{ env.API_URL }}/auth/v1/health" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Supabase API gateway did not become ready in time" >&2
+          exit 1
+
       - name: Run admin E2E tests
+        env:
+          E2E_SUPABASE_URL: ${{ env.API_URL }}
+          E2E_SUPABASE_PUBLISHABLE_KEY: ${{ env.PUBLISHABLE_KEY }}
         run: >-
           npx playwright test
           e2e/admin-api-connection.spec.ts
           e2e/admin-company-registration.spec.ts
           e2e/admin-fee-rules.spec.ts
 
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop
+
       - name: Upload admin E2E reports
         if: always() && github.actor != 'nektos/act'
-         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: e2e-admin-reports
           path: |
@@ -167,10 +204,10 @@ jobs:
 
     steps:
       - name: Checkout code
-         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Node.js
-         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "20"
           cache: "npm"
@@ -181,17 +218,66 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start --exclude imgproxy,pooler
+
+      - name: Capture local Supabase connection details
+        run: >-
+          supabase status -o json |
+          jq -r 'to_entries[] | "\(.key)=\(.value)"' >> "$GITHUB_ENV"
+
+      - name: Reset database (apply migrations)
+        run: supabase db reset
+
+      - name: Run pgTAP database tests
+        run: supabase test db
+
+      - name: Wait for Supabase API gateway
+        run: |
+          # `supabase db reset` restarts containers internally, so the
+          # gateway must be re-checked here rather than only once after
+          # `supabase start` (pgTAP connects directly to Postgres and
+          # proves nothing about the Auth/Kong gateway's readiness).
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent "${{ env.API_URL }}/auth/v1/health" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Supabase API gateway did not become ready in time" >&2
+          exit 1
+
+      - name: Provision E2E users
+        env:
+          E2E_SUPABASE_URL: ${{ env.API_URL }}
+          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
+        run: sh scripts/provision-e2e-users.sh
+
       - name: Run core E2E tests
+        env:
+          E2E_SUPABASE_URL: ${{ env.API_URL }}
+          E2E_SUPABASE_PUBLISHABLE_KEY: ${{ env.PUBLISHABLE_KEY }}
         run: >-
           npx playwright test
           e2e/auth-guards.spec.ts
-          e2e/persistence-reload.spec.ts
-          e2e/rfq-seeded-scenario.spec.ts
-          e2e/rfq-workflow.spec.ts
+          e2e/closed-group-messaging.spec.ts
+          e2e/customer-seed.spec.ts
+          e2e/customer-view.spec.ts
+          e2e/side-panel.spec.ts
+          e2e/message-utils.spec.ts
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop
 
       - name: Upload core E2E reports
         if: always() && github.actor != 'nektos/act'
-         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: e2e-core-reports
           path: |
@@ -204,10 +290,10 @@ jobs:
 
     steps:
       - name: Checkout code
-         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Build Docker image
         run: npm run docker:build:ci
@@ -242,7 +328,7 @@ jobs:
 
       - name: Upload ZAP reports
         if: always() && github.actor != 'nektos/act'
-         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: zap-reports
           path: |
@@ -266,13 +352,13 @@ jobs:
 
     steps:
       - name: Checkout code
-         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Set up Docker Buildx
-         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Log in to GHCR
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -280,12 +366,13 @@ jobs:
 
       - name: Build and push GHCR image
         id: publish-image
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           push: true
           platforms: linux/amd64
           tags: |
+            ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
 
   deploy-integration:
@@ -310,7 +397,7 @@ jobs:
       EXPECTED_ENVIRONMENT: integration
       XCHAT_IMAGE_REPOSITORY: ghcr.io/${{ github.repository }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Validate deployment configuration
         run: |
           set -euo pipefail
@@ -319,14 +406,6 @@ jobs:
           done
       - name: Deploy immutable image to Integration
         run: bash ./scripts/deploy-coolify.sh
-      - name: Publish deployment summary
-        run: |
-          {
-            echo "### Integration deployment"
-            echo "- Commit: \\`${RELEASE_SHA}\\`"
-            echo "- Image: \\`${XCHAT_IMAGE_REPOSITORY}@${IMAGE_DIGEST}\\`"
-            echo "- URL: https://xchat.int.axdev.ch"
-          } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-production:
     name: Deploy Production
@@ -348,7 +427,7 @@ jobs:
       EXPECTED_ENVIRONMENT: production
       XCHAT_IMAGE_REPOSITORY: ghcr.io/${{ github.repository }}
     steps:
-       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Validate deployment configuration
         run: |
           set -euo pipefail
@@ -357,11 +436,3 @@ jobs:
           done
       - name: Deploy immutable image to Production
         run: bash ./scripts/deploy-coolify.sh
-      - name: Publish deployment summary
-        run: |
-          {
-            echo "### Production deployment"
-            echo "- Commit: \\`${RELEASE_SHA}\\`"
-            echo "- Image: \\`${XCHAT_IMAGE_REPOSITORY}@${IMAGE_DIGEST}\\`"
-            echo "- URL: https://xchat.axdev.ch"
-          } >> "$GITHUB_STEP_SUMMARY"

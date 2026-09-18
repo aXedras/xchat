@@ -1,52 +1,113 @@
-import config from "@/config/environment";
+import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { logger } from "@/services/logger";
-import { LocalRealtimeCarrier } from "@/services/realtime/localCarrier";
-import { SupabaseRealtimeCarrier } from "@/services/realtime/supabaseCarrier";
-import { RealtimeCarrier, RealtimeEvent, RealtimeListener } from "@/services/realtime/types";
-import { WebSocketRealtimeCarrier } from "@/services/realtime/websocketCarrier";
 
-function createRealtimeCarrier(): RealtimeCarrier {
-  const provider = config.realtime.carrier;
+export interface MessageCreatedEvent {
+  messageId: string;
+  conversationId: string;
+  messageType: "standard" | "rfq";
+}
 
-  if (provider === "supabase") {
-    const hasSupabaseConfig = !!config.realtime.supabaseUrl && !!config.realtime.supabasePublishableKey;
-    if (!hasSupabaseConfig) {
-      logger.warn("Supabase realtime selected without configuration. Local realtime carrier will be used.", {
-        provider,
-      });
-      return new LocalRealtimeCarrier();
+export interface ConversationDeletedEvent {
+  conversationId: string;
+  deletedByUserId: string;
+}
+
+type MessageCreatedListener = (event: MessageCreatedEvent) => void;
+type ConversationDeletedListener = (event: ConversationDeletedEvent) => void;
+
+class MessagingRealtime {
+  private channel: ReturnType<
+    NonNullable<ReturnType<typeof getSupabaseBrowserClient>>["channel"]
+  > | null = null;
+  private currentUserId: string | null = null;
+  private readonly messageCreatedListeners = new Set<MessageCreatedListener>();
+  private readonly conversationDeletedListeners =
+    new Set<ConversationDeletedListener>();
+
+  connect(userId: string) {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      return () => {};
     }
 
-    return new SupabaseRealtimeCarrier(
-      config.realtime.supabaseUrl,
-      config.realtime.supabasePublishableKey,
-      config.realtime.channel,
-      config.realtime.event,
+    if (this.channel && this.currentUserId === userId) {
+      return () => {};
+    }
+
+    if (this.channel) {
+      void client.removeChannel(this.channel);
+    }
+
+    this.currentUserId = userId;
+    this.channel = client.channel(`user:${userId}`, { config: { private: true } });
+
+    this.channel.on(
+      "broadcast",
+      { event: "message.created" },
+      (payload: unknown) => {
+        const raw = payload as { payload?: MessageCreatedEvent };
+        const event = raw?.payload;
+        if (event && typeof event.messageId === "string") {
+          this.messageCreatedListeners.forEach((listener) => {
+            try {
+              listener(event);
+            } catch {
+              // Listener failures must not break the realtime channel.
+            }
+          });
+        }
+      },
     );
+
+    this.channel.on(
+      "broadcast",
+      { event: "conversation.deleted" },
+      (payload: unknown) => {
+        const raw = payload as { payload?: ConversationDeletedEvent };
+        const event = raw?.payload;
+        if (event && typeof event.conversationId === "string") {
+          this.conversationDeletedListeners.forEach((listener) => {
+            try {
+              listener(event);
+            } catch {
+              // Listener failures must not break the realtime channel.
+            }
+          });
+        }
+      },
+    );
+
+    this.channel.subscribe((status, error) => {
+      if (status !== "SUBSCRIBED" && error) {
+        logger.warn("Realtime subscribe failed", { error });
+      }
+    });
+
+    return () => {};
   }
 
-  if (provider === "websocket") {
-    return new WebSocketRealtimeCarrier(config.wsUrl, config.realtime.channel, config.realtime.event);
+  onMessageCreated(listener: MessageCreatedListener) {
+    this.messageCreatedListeners.add(listener);
+    return () => {
+      this.messageCreatedListeners.delete(listener);
+    };
   }
 
-  return new LocalRealtimeCarrier();
+  onConversationDeleted(listener: ConversationDeletedListener) {
+    this.conversationDeletedListeners.add(listener);
+    return () => {
+      this.conversationDeletedListeners.delete(listener);
+    };
+  }
+
+  disconnect() {
+    const client = getSupabaseBrowserClient();
+    if (client && this.channel) {
+      void client.removeChannel(this.channel);
+    }
+    this.channel = null;
+    this.currentUserId = null;
+  }
 }
 
-class RealtimeBus {
-  private readonly carrier = createRealtimeCarrier();
-
-  subscribe(listener: RealtimeListener) {
-    return this.carrier.subscribe(listener);
-  }
-
-  publish(event: RealtimeEvent) {
-    this.carrier.publish(event);
-  }
-
-  destroy() {
-    this.carrier.destroy?.();
-  }
-}
-
-export type { RealtimeEvent } from "@/services/realtime/types";
-export const realtimeBus = new RealtimeBus();
+export const realtimeBus = new MessagingRealtime();

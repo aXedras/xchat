@@ -14,10 +14,12 @@ import { logger } from "@/services/logger";
 import { FeeRule } from "@/types/chat";
 import { Download, Plus, Save, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { FeeRuleEditor } from "@/components/admin/fee-rules/FeeRuleEditor";
 import { buildNewRule, downloadTextFile, validateRule } from "@/components/admin/fee-rules/formConfig";
 
 const FeeRulesForm = () => {
+  const { t } = useTranslation();
   const companies = useAvailableCompanies();
   const [profiles, setProfiles] = useState(() => feeService.listProfiles());
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -27,7 +29,7 @@ const FeeRulesForm = () => {
     const fromCompanies = companies.map((company) => company.name);
     const unique = new Set([...fromCompanies, ...fromProfiles]);
     return Array.from(unique).sort((left, right) => left.localeCompare(right));
-  }, [profiles]);
+  }, [profiles, companies]);
 
   const [selectedCompany, setSelectedCompany] = useState(companyOptions[0] ?? "Argor-Heraeus");
 
@@ -67,7 +69,7 @@ const FeeRulesForm = () => {
   };
 
   const handleAddRule = () => {
-    updateRules([...selectedRules, buildNewRule()]);
+    updateRules([...selectedRules, { ...buildNewRule(), label: t("adminFees.newFee") }]);
   };
 
   const handleDeleteRule = (ruleId: string) => {
@@ -76,11 +78,11 @@ const FeeRulesForm = () => {
 
   const handleSave = () => {
     if (hasValidationErrors) {
-      toast.error("Please fix all validation errors before saving");
+      toast.error(t("adminFees.fixValidation"));
       return;
     }
     feeService.saveProfile(selectedCompany, selectedRules);
-    toast.success(`Fee rules for ${selectedCompany} saved`);
+    toast.success(t("adminFees.saved", { company: selectedCompany }));
   };
 
   const handleExportJson = () => {
@@ -108,9 +110,9 @@ const FeeRulesForm = () => {
       if (nextProfiles.length > 0) {
         setSelectedCompany(nextProfiles[0].company);
       }
-      toast.success("Fee profiles imported successfully");
+      toast.success(t("adminFees.imported"));
     } catch (error) {
-      toast.error("Unable to import fee profile JSON");
+      toast.error(t("adminFees.importFailed"));
       logger.error("Fee profile import failed", { error });
     } finally {
       event.target.value = "";
@@ -120,25 +122,24 @@ const FeeRulesForm = () => {
   return (
     <div className="space-y-6 rounded-lg border bg-card p-4">
       <div className="space-y-2">
-        <h3 className="text-lg font-medium">Customer Fee Matrix</h3>
+        <h3 className="text-lg font-medium">{t("adminFees.title")}</h3>
         <p className="text-sm text-muted-foreground">
-          Define per-customer fees (percent, bps, fixed) with priority, validity window, and minimum quantity.
-          Active rules are automatically included in quote discussions and deal conversion.
+          {t("adminFees.desc")}
         </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={handleExportJson}>
           <Download className="mr-2 h-4 w-4" />
-          Export JSON
+          {t("adminFees.exportJson")}
         </Button>
         <Button type="button" variant="outline" onClick={handleExportCsv}>
           <Download className="mr-2 h-4 w-4" />
-          Export CSV
+          {t("adminFees.exportCsv")}
         </Button>
         <Button type="button" variant="outline" onClick={handleImportJsonClick}>
           <Upload className="mr-2 h-4 w-4" />
-          Import JSON
+          {t("adminFees.importJson")}
         </Button>
         <input
           ref={importInputRef}
@@ -151,10 +152,10 @@ const FeeRulesForm = () => {
 
       <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
         <div className="space-y-2">
-          <Label htmlFor="fee-company">Customer / Company</Label>
+          <Label htmlFor="fee-company">{t("adminFees.customerCompany")}</Label>
           <Select value={selectedCompany} onValueChange={setSelectedCompany}>
             <SelectTrigger id="fee-company">
-              <SelectValue placeholder="Select customer" />
+              <SelectValue placeholder={t("adminFees.selectCustomer")} />
             </SelectTrigger>
             <SelectContent>
               {companyOptions.map((companyName) => (
@@ -168,7 +169,7 @@ const FeeRulesForm = () => {
         <div className="flex items-end">
           <Button type="button" variant="outline" className="w-full" onClick={handleAddRule}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Fee Rule
+            {t("adminFees.addFeeRule")}
           </Button>
         </div>
       </div>
@@ -176,7 +177,7 @@ const FeeRulesForm = () => {
       <div className="space-y-3">
         {selectedRules.length === 0 ? (
           <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-            No fee rules configured for {selectedCompany}. Add a rule to start automatic fee application.
+            {t("adminFees.noRules", { company: selectedCompany })}
           </p>
         ) : (
           selectedRules.map((rule) => (
@@ -187,7 +188,7 @@ const FeeRulesForm = () => {
 
       <Button type="button" className="w-full" onClick={handleSave} disabled={hasValidationErrors}>
         <Save className="mr-2 h-4 w-4" />
-        Save Fee Rules
+        {t("adminFees.saveFeeRules")}
       </Button>
     </div>
   );

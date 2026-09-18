@@ -4,22 +4,39 @@
 
 import config from "@/config/environment";
 import { adminConnectionStore } from "@/services/adminConnectionStore";
+import { logger } from "@/services/logger";
+import i18n from "@/i18n";
 import {
   getSupabaseBrowserClient,
   hasSupabaseConfig,
 } from "@/services/supabase/client";
+import { getMyProfile } from "@/services/profileService";
 
 const APP_AUTH_STORAGE_KEY = "xchat.appAuth";
 
 export interface AppAuthIdentity {
-  mode: "demo" | "supabase" | "vendor-admin";
   role: "user" | "vendor-admin";
   userId?: string;
   email: string;
   displayName: string;
+  avatarUrl?: string;
 }
 
 let appIdentity: AppAuthIdentity | null = null;
+
+type AppAuthListener = (identity: AppAuthIdentity | null) => void;
+
+const appAuthListeners = new Set<AppAuthListener>();
+
+function notifyAppAuthChanged(identity: AppAuthIdentity | null) {
+  appAuthListeners.forEach((listener) => {
+    try {
+      listener(identity);
+    } catch {
+      // Listener failures must not break the auth flow.
+    }
+  });
+}
 
 function buildDisplayName(email: string, fallback?: string | null) {
   if (fallback?.trim()) {
@@ -38,38 +55,77 @@ function buildDisplayName(email: string, fallback?: string | null) {
     .join(" ");
 }
 
-function resolveSupabaseRole(user: {
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
-}) {
-  const appRole =
-    typeof user.app_metadata?.role === "string"
-      ? user.app_metadata.role
-      : undefined;
-  const userRole =
-    typeof user.user_metadata?.role === "string"
-      ? user.user_metadata.role
-      : undefined;
-  const normalizedRole = (userRole || appRole || "").toLowerCase();
+async function resolveCurrentUserRole(): Promise<"user" | "vendor-admin"> {
+  const client = getSupabaseBrowserClient();
+  if (!client) {
+    return "user";
+  }
 
-  return normalizedRole === "vendor-admin" || normalizedRole === "admin"
-    ? "vendor-admin"
-    : "user";
+  try {
+    const { data, error } = await client.rpc("get_my_role");
+    if (error) {
+      logger.error("Unable to resolve current user role", { error });
+      return "user";
+    }
+
+    if (data === null) {
+      return "user";
+    }
+
+    if (typeof data !== "string") {
+      logger.error("Unexpected role payload from get_my_role", { data });
+      return "user";
+    }
+
+    const normalizedRole = data.toLowerCase();
+    return normalizedRole === "vendor" || normalizedRole === "admin"
+      ? "vendor-admin"
+      : "user";
+  } catch (error) {
+    logger.error("Unable to resolve current user role", { error });
+    return "user";
+  }
+}
+
+async function loadProfileAvatar(): Promise<string | null> {
+  try {
+    const profile = await getMyProfile();
+    return profile?.avatarUrl || null;
+  } catch (error) {
+    logger.error("Unable to load profile avatar", { error });
+    return null;
+  }
+}
+
+function stripAvatarUrl(
+  identity: AppAuthIdentity,
+): Omit<AppAuthIdentity, "avatarUrl"> {
+  const { avatarUrl: _avatarUrl, ...rest } = identity;
+  return rest;
 }
 
 function persistAppIdentity(identity: AppAuthIdentity | null) {
   appIdentity = identity;
 
   if (!globalThis.localStorage) {
+    notifyAppAuthChanged(identity);
     return;
   }
 
-  if (identity) {
-    localStorage.setItem(APP_AUTH_STORAGE_KEY, JSON.stringify(identity));
-    return;
+  try {
+    if (identity) {
+      localStorage.setItem(
+        APP_AUTH_STORAGE_KEY,
+        JSON.stringify(stripAvatarUrl(identity)),
+      );
+    } else {
+      localStorage.removeItem(APP_AUTH_STORAGE_KEY);
+    }
+  } catch (error) {
+    logger.error("Unable to persist app identity to localStorage", { error });
   }
 
-  localStorage.removeItem(APP_AUTH_STORAGE_KEY);
+  notifyAppAuthChanged(identity);
 }
 
 export const authService = {
@@ -108,12 +164,64 @@ export const authService = {
     return appIdentity;
   },
 
+  setAvatarUrl: (avatarUrl: string): void => {
+    if (!appIdentity) {
+      return;
+    }
+    persistAppIdentity({ ...appIdentity, avatarUrl });
+  },
+
   isVendorAdmin: (): boolean => {
     return appIdentity?.role === "vendor-admin";
   },
 
   isAppAuthenticated: (): boolean => {
     return !!appIdentity;
+  },
+
+  subscribeAppAuth(listener: AppAuthListener) {
+    appAuthListeners.add(listener);
+    return () => {
+      appAuthListeners.delete(listener);
+    };
+  },
+
+  startAuthListener: (): void => {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      return;
+    }
+
+    client.auth.onAuthStateChange((event, session) => {
+      const user = session?.user;
+
+      if (event === "SIGNED_OUT") {
+        persistAppIdentity(null);
+        return;
+      }
+
+      if (user?.email) {
+        // Defer the role RPC out of the Supabase session lock: calling
+        // get_my_role synchronously inside onAuthStateChange re-enters the
+        // lock and deadlocks with getSession() on a full page reload.
+        setTimeout(() => {
+          void resolveCurrentUserRole().then((role) => {
+            const avatarUrl = appIdentity?.avatarUrl;
+
+            persistAppIdentity({
+              role,
+              userId: user.id,
+              email: user.email,
+              displayName: buildDisplayName(
+                user.email,
+                user.user_metadata?.full_name as string | null | undefined,
+              ),
+              ...(avatarUrl ? { avatarUrl } : {}),
+            });
+          });
+        }, 0);
+      }
+    });
   },
 
   restoreAppSession: async (): Promise<AppAuthIdentity | null> => {
@@ -124,23 +232,18 @@ export const authService = {
 
     const { data, error } = await client.auth.getSession();
     if (error) {
-      if (appIdentity?.mode === "supabase") {
-        persistAppIdentity(null);
-      }
+      persistAppIdentity(null);
       throw new Error(error.message);
     }
 
     const user = data.session?.user;
     if (!user?.email) {
-      if (appIdentity?.mode === "supabase") {
-        persistAppIdentity(null);
-      }
-      return appIdentity;
+      persistAppIdentity(null);
+      return null;
     }
 
     const identity: AppAuthIdentity = {
-      mode: "supabase",
-      role: resolveSupabaseRole(user),
+      role: await resolveCurrentUserRole(),
       userId: user.id,
       email: user.email,
       displayName: buildDisplayName(
@@ -148,6 +251,11 @@ export const authService = {
         user.user_metadata?.full_name as string | null | undefined,
       ),
     };
+
+    const avatarUrl = (await loadProfileAvatar()) ?? appIdentity?.avatarUrl;
+    if (avatarUrl) {
+      identity.avatarUrl = avatarUrl;
+    }
 
     persistAppIdentity(identity);
     return identity;
@@ -157,41 +265,9 @@ export const authService = {
     email: string,
     password: string,
   ): Promise<AppAuthIdentity> => {
-    if (
-      email === config.auth.vendorAdmin.email &&
-      password === config.auth.vendorAdmin.password
-    ) {
-      persistAppIdentity({
-        mode: "vendor-admin",
-        role: "vendor-admin",
-        userId: "vendor-admin",
-        email,
-        displayName: "Vendor Admin",
-      });
-      return appIdentity;
-    }
-
-    if (
-      config.demo.email &&
-      config.demo.password &&
-      email === config.demo.email &&
-      password === config.demo.password
-    ) {
-      persistAppIdentity({
-        mode: "demo",
-        role: "user",
-        userId: "demo-user",
-        email,
-        displayName: "Demo User",
-      });
-      return appIdentity;
-    }
-
     const client = getSupabaseBrowserClient();
     if (!client) {
-      throw new Error(
-        "Supabase authentication is not configured. Use the demo credentials or configure Supabase first.",
-      );
+      throw new Error(i18n.t("auth.noSupabaseConfig"));
     }
 
     const { data, error } = await client.auth.signInWithPassword({
@@ -199,19 +275,25 @@ export const authService = {
       password,
     });
     if (error || !data.user) {
-      throw new Error(error?.message || "Invalid credentials");
+      throw new Error(error?.message || i18n.t("auth.invalidCredentials"));
     }
 
-    persistAppIdentity({
-      mode: "supabase",
-      role: resolveSupabaseRole(data.user),
+    const identity: AppAuthIdentity = {
+      role: await resolveCurrentUserRole(),
       userId: data.user.id,
       email: data.user.email || email,
       displayName: buildDisplayName(
         data.user.email || email,
         data.user.user_metadata?.full_name as string | null | undefined,
       ),
-    });
+    };
+
+    const avatarUrl = await loadProfileAvatar();
+    if (avatarUrl) {
+      identity.avatarUrl = avatarUrl;
+    }
+
+    persistAppIdentity(identity);
     return appIdentity;
   },
 
@@ -227,6 +309,7 @@ export const authService = {
       email,
       options: {
         emailRedirectTo: config.auth.supabaseRedirectUrl,
+        shouldCreateUser: false,
       },
     });
 
@@ -247,3 +330,4 @@ export const authService = {
 
 // Initialize the service when imported
 authService.initialize();
+authService.startAuthListener();

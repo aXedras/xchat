@@ -87,20 +87,6 @@ const defaultConfig = {
         import.meta.env.VITE_SUPABASE_AUTH_REDIRECT_URL,
         "http://127.0.0.1:4173",
       ) || "http://127.0.0.1:4173",
-    vendorAdmin: {
-      email:
-        readValue(
-          runtimeConfig.vendorAdminEmail,
-          import.meta.env.VITE_VENDOR_ADMIN_EMAIL,
-          "admin@xchat.local",
-        ) || "admin@xchat.local",
-      password:
-        readValue(
-          runtimeConfig.vendorAdminPassword,
-          import.meta.env.VITE_VENDOR_ADMIN_PASSWORD,
-          "change-me-demo-admin",
-        ) || "change-me-demo-admin",
-    },
   },
   persistence: {
     provider: (readValue(
@@ -108,20 +94,6 @@ const defaultConfig = {
       import.meta.env.VITE_PERSISTENCE_PROVIDER,
       "supabase",
     ) || "supabase") as PersistenceProvider,
-  },
-  demo: {
-    email:
-      readValue(
-        runtimeConfig.demoEmail,
-        import.meta.env.VITE_DEMO_EMAIL,
-        "demo@axedras.com",
-      ) || "demo@axedras.com",
-    password:
-      readValue(
-        runtimeConfig.demoPassword,
-        import.meta.env.VITE_DEMO_PASSWORD,
-        "password",
-      ) || "password",
   },
   integrations: {
     bil: {
@@ -159,6 +131,15 @@ const defaultConfig = {
           import.meta.env.VITE_BIL_LEDGER_ID,
           "",
         ) || "",
+    },
+    marketdata: {
+      baseUrl:
+        readValue(
+          runtimeConfig.marketdataBaseUrl,
+          import.meta.env.VITE_MARKETDATA_BASE_URL,
+          "https://marketdata.axdev.ch",
+        ) || "https://marketdata.axdev.ch",
+      symbols: ["XAUUSD.FXVWD", "XAGUSD.FXVWD", "XPTUSD.FXVWD", "XPDUSD.FXVWD"],
     },
   },
   features: {

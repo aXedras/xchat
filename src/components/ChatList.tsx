@@ -10,6 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTranslation } from "react-i18next";
 
 interface ChatListProps {
   chats: Chat[];
@@ -30,6 +31,8 @@ const ChatList = ({
   onRestoreChat = () => {},
   isArchiveSection = false
 }: ChatListProps) => {
+  const { t } = useTranslation();
+
   return (
     <div className="flex-1 overflow-y-auto scroll-hidden">
       <TooltipProvider>
@@ -83,7 +86,7 @@ const ChatList = ({
                           </p>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-xs p-2">
-                          <p className="text-xs font-medium mb-1">Participants:</p>
+                          <p className="text-xs font-medium mb-1">{t("chat.participants")}</p>
                           <p className="text-xs">{chat.members.join(", ")}</p>
                         </TooltipContent>
                       </Tooltip>
