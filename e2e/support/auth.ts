@@ -1,30 +1,15 @@
 import { expect, type Page } from "@playwright/test";
 
-function requireEnv(
-  name:
-    | "VITE_DEMO_EMAIL"
-    | "VITE_DEMO_PASSWORD"
-    | "VITE_VENDOR_ADMIN_EMAIL"
-    | "VITE_VENDOR_ADMIN_PASSWORD",
-) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(
-      `Missing required Playwright auth environment variable: ${name}`,
-    );
-  }
-
-  return value;
-}
-
-export const demoAuth = {
-  email: requireEnv("VITE_DEMO_EMAIL"),
-  password: requireEnv("VITE_DEMO_PASSWORD"),
+// Seeded in supabase/seed.sql (see there for the source of truth). Logins go
+// through Supabase Auth; there is no demo/vendor-admin credential path anymore.
+const regularAuth = {
+  email: "alice@xchat.test.local",
+  password: "Al1ce-Test-Pw",
 } as const;
 
-export const vendorAdminAuth = {
-  email: requireEnv("VITE_VENDOR_ADMIN_EMAIL"),
-  password: requireEnv("VITE_VENDOR_ADMIN_PASSWORD"),
+const vendorAdminAuth = {
+  email: "admin@xchat.test.local",
+  password: "Adm1n-Test-Pw",
 } as const;
 
 async function loginWithCredentials(
@@ -34,7 +19,7 @@ async function loginWithCredentials(
   await page.goto("/");
 
   const emailInput = page.getByLabel("Email");
-  const passwordInput = page.getByLabel("Password");
+  const passwordInput = page.getByLabel("Password", { exact: true });
   const signInButton = page.getByRole("button", {
     name: "Sign in",
     exact: true,
@@ -50,7 +35,7 @@ async function loginWithCredentials(
 }
 
 export async function login(page: Page) {
-  await loginWithCredentials(page, demoAuth);
+  await loginWithCredentials(page, regularAuth);
   await expect(page).toHaveURL(/\/dashboard$/);
 }
 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ProfileSectionCard } from "@/components/profile/ProfileSectionCard";
 import { logger } from "@/services/logger";
+import { useTranslation } from "react-i18next";
 
 const notificationsFormSchema = z.object({
   emailNotifications: z.boolean().default(true),
@@ -16,24 +17,26 @@ const notificationsFormSchema = z.object({
 
 type NotificationsFormValues = z.infer<typeof notificationsFormSchema>;
 
-const notificationFieldConfig: Array<{
-  name: keyof NotificationsFormValues;
-  label: string;
-  description: string;
-}> = [
-  {
-    name: "emailNotifications",
-    label: "Email Notifications",
-    description: "Receive notifications via email.",
-  },
-  {
-    name: "pushNotifications",
-    label: "Push Notifications",
-    description: "Receive notifications on your device.",
-  },
-];
-
 export const NotificationsForm = () => {
+  const { t } = useTranslation();
+
+  const notificationFieldConfig: Array<{
+    name: keyof NotificationsFormValues;
+    label: string;
+    description: string;
+  }> = [
+    {
+      name: "emailNotifications",
+      label: t("profile.emailNotifications"),
+      description: t("profile.emailNotificationsDesc"),
+    },
+    {
+      name: "pushNotifications",
+      label: t("profile.pushNotifications"),
+      description: t("profile.pushNotificationsDesc"),
+    },
+  ];
+
   const notificationsForm = useForm<NotificationsFormValues>({
     resolver: zodResolver(notificationsFormSchema),
     defaultValues: {
@@ -44,13 +47,13 @@ export const NotificationsForm = () => {
 
   const onNotificationsSubmit = (data: NotificationsFormValues) => {
     logger.info("Notification settings updated", data);
-    toast.success("Notification preferences updated");
+    toast.success(t("profile.notificationUpdated"));
   };
 
   return (
     <ProfileSectionCard
-      title="Notification Settings"
-      description="Manage how you receive notifications."
+      title={t("profile.notificationSettings")}
+      description={t("profile.notificationSettingsDesc")}
     >
         <Form {...notificationsForm}>
           <form onSubmit={notificationsForm.handleSubmit(onNotificationsSubmit)} className="space-y-6">
@@ -69,7 +72,7 @@ export const NotificationsForm = () => {
                       <FormControl>
                         <div className="flex items-center gap-3">
                           <span className={field.value ? "text-primary" : "text-muted-foreground"}>
-                            {field.value ? "On" : "Off"}
+                            {field.value ? t("common.on") : t("common.off")}
                           </span>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </div>
@@ -80,7 +83,7 @@ export const NotificationsForm = () => {
               ))}
             </div>
             
-            <Button type="submit">Save Preferences</Button>
+            <Button type="submit">{t("profile.savePreferences")}</Button>
           </form>
         </Form>
     </ProfileSectionCard>

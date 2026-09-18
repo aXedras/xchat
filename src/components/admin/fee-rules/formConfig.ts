@@ -2,12 +2,12 @@ import { FeeRule } from "@/types/chat";
 
 export interface FeeTypeOption {
   value: FeeRule["type"];
-  label: string;
+  labelKey: string;
 }
 
 export interface ProductClassOption {
   value: FeeRule["productClass"];
-  label: string;
+  labelKey: string;
 }
 
 export interface RuleErrors {
@@ -19,18 +19,18 @@ export interface RuleErrors {
 }
 
 export const feeTypeOptions: FeeTypeOption[] = [
-  { value: "percent", label: "Percent (%)" },
-  { value: "bps", label: "Basis Points (bps)" },
-  { value: "fixed", label: "Fixed amount" },
+  { value: "percent", labelKey: "adminFees.percent" },
+  { value: "bps", labelKey: "adminFees.bps" },
+  { value: "fixed", labelKey: "adminFees.fixed" },
 ];
 
 export const productClassOptions: ProductClassOption[] = [
-  { value: "all", label: "All products" },
-  { value: "gold", label: "Gold" },
-  { value: "silver", label: "Silver" },
-  { value: "platinum", label: "Platinum" },
-  { value: "palladium", label: "Palladium" },
-  { value: "other", label: "Other" },
+  { value: "all", labelKey: "adminFees.allProducts" },
+  { value: "gold", labelKey: "rfq.productClassGold" },
+  { value: "silver", labelKey: "rfq.productClassSilver" },
+  { value: "platinum", labelKey: "rfq.productClassPlatinum" },
+  { value: "palladium", labelKey: "rfq.productClassPalladium" },
+  { value: "other", labelKey: "rfq.productClassOther" },
 ];
 
 export function buildNewRule(): FeeRule {
@@ -51,23 +51,23 @@ export function validateRule(rule: FeeRule): RuleErrors {
   const errors: RuleErrors = {};
 
   if (!rule.label.trim()) {
-    errors.label = "Label is required";
+    errors.label = "adminFees.labelRequired";
   }
 
   if (!Number.isFinite(rule.value) || rule.value < 0) {
-    errors.value = "Value must be >= 0";
+    errors.value = "adminFees.valueNonNegative";
   }
 
   if (!Number.isFinite(rule.priority) || rule.priority < 0) {
-    errors.priority = "Priority must be >= 0";
+    errors.priority = "adminFees.priorityNonNegative";
   }
 
   if (rule.minimumQuantity !== undefined && (!Number.isFinite(rule.minimumQuantity) || rule.minimumQuantity < 0)) {
-    errors.minimumQuantity = "Min quantity must be >= 0";
+    errors.minimumQuantity = "adminFees.minQtyNonNegative";
   }
 
   if (rule.validFrom && rule.validTo && rule.validFrom > rule.validTo) {
-    errors.validRange = "Valid From must be on or before Valid To";
+    errors.validRange = "adminFees.validRange";
   }
 
   return errors;

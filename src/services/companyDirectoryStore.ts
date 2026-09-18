@@ -40,7 +40,7 @@ function isCompany(value: unknown): value is Company {
   );
 }
 
-function parseStoredCompanies(raw: string | null) {
+function parseStoredCompanies(raw: string | null): Company[] {
   if (!raw) {
     return [] as Company[];
   }

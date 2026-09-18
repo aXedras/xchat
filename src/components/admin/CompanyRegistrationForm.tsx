@@ -10,6 +10,7 @@ import { logger } from "@/services/logger";
 import { adminUtils } from "@/utils/adminUtils";
 import { Loader2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/select";
 
 const CompanyRegistrationForm = () => {
+  const { t } = useTranslation();
   const connectionState = useAdminConnectionState();
   const availableCompanies = useAvailableCompanies();
   const isConnected = connectionState.status === "connected";
@@ -51,12 +53,12 @@ const CompanyRegistrationForm = () => {
     e.preventDefault();
     
     if (!isConnected) {
-      toast.error("API connection required. Please connect your API key first.");
+      toast.error(t("adminCompanies.connectionRequiredToast"));
       return;
     }
 
     if (duplicateCompany) {
-      toast.error(`Company "${duplicateCompany.name}" already exists.`);
+      toast.error(t("adminCompanies.duplicateToast", { name: duplicateCompany.name }));
       return;
     }
     
@@ -66,7 +68,7 @@ const CompanyRegistrationForm = () => {
       const filteredUsers = users.filter(user => user.name.trim() !== "" && user.role.trim() !== "");
       
       if (filteredUsers.length === 0) {
-        toast.error("At least one user with name and role is required");
+        toast.error(t("adminCompanies.atLeastOneUser"));
         setIsLoading(false);
         return;
       }
@@ -80,13 +82,13 @@ const CompanyRegistrationForm = () => {
         filteredUsers
       );
 
-      toast.success(`Company "${companyName}" registered with ${company.users.length} users`);
+      toast.success(t("adminCompanies.registered", { name: companyName, count: company.users.length }));
       setCompanyName("");
       setCompanyLocation("");
       setCompanyType("");
       setUsers([{ name: "", role: "" }]);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "An error occurred during company registration";
+      const message = error instanceof Error ? error.message : t("adminCompanies.registrationError");
       toast.error(message);
       logger.error("Company registration error", { error, companyName });
     } finally {
@@ -105,6 +107,17 @@ const CompanyRegistrationForm = () => {
     "Other"
   ];
 
+  const companyTypeLabels: Record<string, string> = {
+    Refiner: t("adminCompanies.typeRefiner"),
+    Mint: t("adminCompanies.typeMint"),
+    Logistics: t("adminCompanies.typeLogistics"),
+    Bank: t("adminCompanies.typeBank"),
+    Dealer: t("adminCompanies.typeDealer"),
+    Vault: t("adminCompanies.typeVault"),
+    Exchange: t("adminCompanies.typeExchange"),
+    Other: t("adminCompanies.typeOther"),
+  };
+
   const userRoles = [
     "Administrator",
     "Manager",
@@ -116,70 +129,81 @@ const CompanyRegistrationForm = () => {
     "Read-only"
   ];
 
+  const userRoleLabels: Record<string, string> = {
+    Administrator: t("adminCompanies.roleAdministrator"),
+    Manager: t("adminCompanies.roleManager"),
+    "Compliance Officer": t("adminCompanies.roleCompliance"),
+    Trader: t("adminCompanies.roleTrader"),
+    "Sales Representative": t("adminCompanies.roleSales"),
+    Operations: t("adminCompanies.roleOperations"),
+    Auditor: t("adminCompanies.roleAuditor"),
+    "Read-only": t("adminCompanies.roleReadonly"),
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-4 border rounded-lg bg-card">
-      <h3 className="text-lg font-medium">Register New Company</h3>
+      <h3 className="text-lg font-medium">{t("adminCompanies.registerCompany")}</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        Add a new company and its users to the platform
+        {t("adminCompanies.registerDesc")}
       </p>
 
       {!isConnected && (
         <Alert>
-          <AlertTitle>API connection required</AlertTitle>
+          <AlertTitle>{t("adminCompanies.connectionRequired")}</AlertTitle>
           <AlertDescription>
-            Establish an admin API connection before registering companies and users.
+            {t("adminCompanies.connectionRequiredDesc")}
           </AlertDescription>
         </Alert>
       )}
 
       {duplicateCompany && (
         <Alert variant="destructive">
-          <AlertTitle>Duplicate company</AlertTitle>
+          <AlertTitle>{t("adminCompanies.duplicateCompany")}</AlertTitle>
           <AlertDescription>
-            Company "{duplicateCompany.name}" already exists and cannot be registered twice.
+            {t("adminCompanies.duplicateCompanyDesc", { name: duplicateCompany.name })}
           </AlertDescription>
         </Alert>
       )}
       
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="companyName">Company Name</Label>
+          <Label htmlFor="companyName">{t("adminCompanies.companyName")}</Label>
           <Input
             id="companyName"
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
-            placeholder="Enter company name"
+            placeholder={t("adminCompanies.companyNamePlaceholder")}
             required
             disabled={isLoading || !isConnected}
           />
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="companyLocation">Location</Label>
+          <Label htmlFor="companyLocation">{t("adminCompanies.location")}</Label>
           <Input
             id="companyLocation"
             value={companyLocation}
             onChange={(e) => setCompanyLocation(e.target.value)}
-            placeholder="Country or city"
+            placeholder={t("adminCompanies.locationPlaceholder")}
             required
             disabled={isLoading || !isConnected}
           />
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="companyType">Company Type</Label>
+          <Label htmlFor="companyType">{t("adminCompanies.companyType")}</Label>
           <Select
             value={companyType}
             onValueChange={setCompanyType}
             disabled={isLoading || !isConnected}
           >
             <SelectTrigger id="companyType">
-              <SelectValue placeholder="Select company type" />
+              <SelectValue placeholder={t("adminCompanies.selectType")} />
             </SelectTrigger>
             <SelectContent>
               {companyTypes.map((type) => (
                 <SelectItem key={type} value={type}>
-                  {type}
+                  {companyTypeLabels[type]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -189,7 +213,7 @@ const CompanyRegistrationForm = () => {
       
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-md font-medium">Users</h4>
+          <h4 className="text-md font-medium">{t("adminCompanies.users")}</h4>
           <Button
             type="button"
             variant="outline"
@@ -198,7 +222,7 @@ const CompanyRegistrationForm = () => {
             disabled={isLoading || !isConnected}
           >
             <Plus className="h-4 w-4 mr-1" />
-            Add User
+            {t("adminCompanies.addUser")}
           </Button>
         </div>
         
@@ -206,30 +230,30 @@ const CompanyRegistrationForm = () => {
           <div key={index} className="flex items-start space-x-2 p-3 border rounded bg-background">
             <div className="flex-1 space-y-2">
               <div>
-                <Label htmlFor={`userName-${index}`}>Name</Label>
+                <Label htmlFor={`userName-${index}`}>{t("common.name")}</Label>
                 <Input
                   id={`userName-${index}`}
                   value={user.name}
                   onChange={(e) => handleUserChange(index, 'name', e.target.value)}
-                  placeholder="User name"
+                  placeholder={t("adminCompanies.userNamePlaceholder")}
                   disabled={isLoading || !isConnected}
                 />
               </div>
               
               <div>
-                <Label htmlFor={`userRole-${index}`}>Role</Label>
+                <Label htmlFor={`userRole-${index}`}>{t("common.role")}</Label>
                 <Select 
                   value={user.role}
                   onValueChange={(value) => handleUserChange(index, 'role', value)}
                   disabled={isLoading || !isConnected}
                 >
                   <SelectTrigger id={`userRole-${index}`}>
-                    <SelectValue placeholder="Select role" />
+                    <SelectValue placeholder={t("adminCompanies.selectRole")} />
                   </SelectTrigger>
                   <SelectContent>
                     {userRoles.map((role) => (
                       <SelectItem key={role} value={role}>
-                        {role}
+                        {userRoleLabels[role]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -261,10 +285,10 @@ const CompanyRegistrationForm = () => {
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Registering...
+              {t("adminCompanies.registering")}
             </>
           ) : (
-            "Register Company"
+            t("adminCompanies.register")
           )}
         </Button>
       </div>

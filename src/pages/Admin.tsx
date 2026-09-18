@@ -5,12 +5,14 @@ import CompanyRegistrationForm from "@/components/admin/CompanyRegistrationForm"
 import FeeRulesForm from "@/components/admin/FeeRulesForm";
 import SystemSettingsForm from "@/components/admin/SystemSettingsForm";
 import { useAdminConnectionState } from "@/hooks/useAdminConnectionState";
+import { useTranslation } from "react-i18next";
 
 const Admin = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("system");
   const connectionState = useAdminConnectionState();
   const isConnected = connectionState.status === "connected";
-  const protectedTabTitle = isConnected ? undefined : "API connection required";
+  const protectedTabTitle = isConnected ? undefined : t("admin.protectedTabTitle");
 
   useEffect(() => {
     if (!isConnected && ["companies", "fees"].includes(activeTab)) {
@@ -21,9 +23,9 @@ const Admin = () => {
   return (
     <div className="container max-w-4xl py-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Admin Console</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("admin.title")}</h1>
         <p className="text-muted-foreground">
-          Manage companies and API integrations
+          {t("admin.subtitle")}
         </p>
       </div>
 
@@ -33,53 +35,48 @@ const Admin = () => {
         className="space-y-4"
       >
         <TabsList>
-          <TabsTrigger value="system">System Settings</TabsTrigger>
-          <TabsTrigger value="api">API Connection</TabsTrigger>
+          <TabsTrigger value="system">{t("admin.systemSettings")}</TabsTrigger>
+          <TabsTrigger value="api">{t("admin.apiConnection")}</TabsTrigger>
           <TabsTrigger
             value="companies"
             disabled={!isConnected}
             title={protectedTabTitle}
           >
-            Company Registration
+            {t("admin.companyRegistration")}
           </TabsTrigger>
           <TabsTrigger
             value="fees"
             disabled={!isConnected}
             title={protectedTabTitle}
           >
-            Customer Fees
+            {t("admin.customerFees")}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="system" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Maintain vendor-level settings for integrations and
-            deployment-specific behavior. BIL connectivity can be seeded at
-            container runtime and adjusted here for demo or test environments.
+            {t("admin.systemTabDesc")}
           </p>
           <SystemSettingsForm />
         </TabsContent>
 
         <TabsContent value="api" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Connect to the external API to enable company and user management.
-            This is required before you can register new companies.
+            {t("admin.apiTabDesc")}
           </p>
           <ApiKeyForm />
         </TabsContent>
 
         <TabsContent value="companies" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Register new companies and their users to the platform. Companies
-            registered here will be available for chat.
+            {t("admin.companiesTabDesc")}
           </p>
           <CompanyRegistrationForm />
         </TabsContent>
 
         <TabsContent value="fees" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Maintain customer-specific fee matrices. Active rules are
-            automatically surfaced during RFQ and deal discussions.
+            {t("admin.feesTabDesc")}
           </p>
           <FeeRulesForm />
         </TabsContent>

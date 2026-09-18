@@ -236,6 +236,16 @@ export const messageRepository = {
       message: MessageRecord;
     };
   },
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    const client = requireClient();
+    const { error } = await client.rpc("delete_conversation", {
+      p_conversation_id: conversationId,
+    });
+    if (error) {
+      throw toMessagingError(error);
+    }
+  },
 };
 
 export type { RfqTerms, QuoteRequestRecord };

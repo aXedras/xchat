@@ -2,6 +2,7 @@ import { messageRepository } from "@/services/persistence/messageRepository";
 import { getCurrentParticipant } from "@/services/chatIdentity";
 import { Chat, ConversationRecord, Message, MessageRecord } from "@/types/chat";
 import { formatChatTimestamp } from "@/utils/format";
+import i18n from "@/i18n";
 
 export interface ConversationSummary {
   id: string;
@@ -40,7 +41,7 @@ export function mapConversationToChat(summary: ConversationSummary): Chat {
     name: summary.counterpartyDisplayName,
     counterpartyUserId: summary.counterpartyUserId,
     companyName: summary.counterpartyOrganization ?? undefined,
-    lastMessage: summary.lastMessage ?? "No messages yet",
+    lastMessage: summary.lastMessage ?? i18n.t("chat.noMessages"),
     timestamp: summary.lastMessageAt
       ? formatChatTimestamp(new Date(summary.lastMessageAt))
       : formatChatTimestamp(new Date(summary.createdAt)),
@@ -61,7 +62,7 @@ export function mapMessageRecordToMessage(record: MessageRecord): Message {
     createdAt: record.createdAt,
     status: "delivered",
     isMine,
-    isMacro: false,
+    type: record.type,
     quoteRequestId: record.quoteRequestId ?? undefined,
   };
 }
@@ -73,6 +74,10 @@ export const chatConversationRepository = {
       .map((value) => toConversationSummary(value))
       .filter((summary): summary is ConversationSummary => summary !== null)
       .map(mapConversationToChat);
+  },
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    await messageRepository.deleteConversation(conversationId);
   },
 };
 

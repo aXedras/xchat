@@ -29,8 +29,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run lint, build and duplication checks
-        run: npm run lint && npm run build && npm run jscpd
+      - name: Run lint, build, duplication and dependency checks
+        run: npm run lint && npm run build && npm run jscpd && npm run depcruise
 
       - name: Upload quality reports
         if: always() && github.actor != 'nektos/act'
@@ -130,12 +130,49 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start --exclude imgproxy,pooler
+
+      - name: Capture local Supabase connection details
+        run: >-
+          supabase status -o json |
+          jq -r 'to_entries[] | "\(.key)=\(.value)"' >> "$GITHUB_ENV"
+
+      - name: Reset database (apply migrations)
+        run: supabase db reset
+
+      - name: Wait for Supabase API gateway
+        run: |
+          # `supabase db reset` restarts containers internally, so the
+          # gateway must be re-checked here rather than only once after
+          # `supabase start`.
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent "${{ env.API_URL }}/auth/v1/health" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Supabase API gateway did not become ready in time" >&2
+          exit 1
+
       - name: Run admin E2E tests
+        env:
+          E2E_SUPABASE_URL: ${{ env.API_URL }}
+          E2E_SUPABASE_PUBLISHABLE_KEY: ${{ env.PUBLISHABLE_KEY }}
         run: >-
           npx playwright test
           e2e/admin-api-connection.spec.ts
           e2e/admin-company-registration.spec.ts
           e2e/admin-fee-rules.spec.ts
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop
 
       - name: Upload admin E2E reports
         if: always() && github.actor != 'nektos/act'

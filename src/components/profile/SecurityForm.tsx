@@ -16,25 +16,28 @@ import {
   zodResolver,
 } from "@/components/profile/profileFormKit";
 import { logger } from "@/services/logger";
-
-const securityFormSchema = z.object({
-  currentPassword: z.string().min(8, {
-    message: "Password must be at least 8 characters.",
-  }),
-  newPassword: z.string().min(8, {
-    message: "Password must be at least 8 characters.",
-  }),
-  confirmPassword: z.string().min(8, {
-    message: "Password must be at least 8 characters.",
-  }),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
-
-type SecurityFormValues = z.infer<typeof securityFormSchema>;
+import { useTranslation } from "react-i18next";
 
 export const SecurityForm = () => {
+  const { t } = useTranslation();
+
+  const securityFormSchema = z.object({
+    currentPassword: z.string().min(8, {
+      message: t("profile.passwordMin"),
+    }),
+    newPassword: z.string().min(8, {
+      message: t("profile.passwordMin"),
+    }),
+    confirmPassword: z.string().min(8, {
+      message: t("profile.passwordMin"),
+    }),
+  }).refine((data) => data.newPassword === data.confirmPassword, {
+    message: t("profile.passwordMismatch"),
+    path: ["confirmPassword"],
+  });
+
+  type SecurityFormValues = z.infer<typeof securityFormSchema>;
+
   const securityForm = useForm<SecurityFormValues>({
     resolver: zodResolver(securityFormSchema),
     defaultValues: {
@@ -51,13 +54,13 @@ export const SecurityForm = () => {
       newPassword: "",
       confirmPassword: "",
     });
-    toast.success("Password updated successfully");
+    toast.success(t("profile.passwordUpdated"));
   };
 
   return (
     <ProfileSectionCard
-      title="Security Settings"
-      description="Manage your password and security settings."
+      title={t("profile.securitySettings")}
+      description={t("profile.securitySettingsDesc")}
     >
         <Form {...securityForm}>
           <form onSubmit={securityForm.handleSubmit(onSecuritySubmit)} className="space-y-6">
@@ -66,59 +69,59 @@ export const SecurityForm = () => {
               name="currentPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Current Password</FormLabel>
+                  <FormLabel>{t("profile.currentPassword")}</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Enter your current password" 
-                      type="password" 
-                      {...field} 
+                    <Input
+                      placeholder={t("profile.currentPasswordPlaceholder")}
+                      type="password"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={securityForm.control}
               name="newPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New Password</FormLabel>
+                  <FormLabel>{t("profile.newPassword")}</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Enter your new password" 
-                      type="password" 
-                      {...field} 
+                    <Input
+                      placeholder={t("profile.newPasswordPlaceholder")}
+                      type="password"
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
-                    Password must be at least 8 characters.
+                    {t("profile.passwordMin")}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={securityForm.control}
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
+                  <FormLabel>{t("profile.confirmPassword")}</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Confirm your new password" 
-                      type="password" 
-                      {...field} 
+                    <Input
+                      placeholder={t("profile.confirmPasswordPlaceholder")}
+                      type="password"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
-            <Button type="submit">Update Password</Button>
+
+            <Button type="submit">{t("profile.updatePassword")}</Button>
           </form>
         </Form>
     </ProfileSectionCard>

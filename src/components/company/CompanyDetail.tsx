@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import UserSelector from "@/components/UserSelector";
 import { CompanyIdentity } from "@/components/company/CompanyIdentity";
 import { Company, User } from "@/types/chat";
+import { useTranslation } from "react-i18next";
 import {
   Tabs,
   TabsContent,
@@ -29,6 +30,7 @@ interface CompanyDetailProps {
 type ChatType = "direct" | "group" | "broadcast";
 
 const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) => {
+  const { t } = useTranslation();
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [chatType, setChatType] = useState<ChatType>("direct");
   const [groupName, setGroupName] = useState("");
@@ -76,24 +78,24 @@ const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) =>
         <CompanyIdentity company={company} />
         
         <Button variant="outline" onClick={onBack}>
-          Change Company
+          {t("company.changeCompany")}
         </Button>
       </div>
       
       <Tabs defaultValue="direct" onValueChange={(value) => setChatType(value as ChatType)}>
         <TabsList className="grid grid-cols-3 mb-4">
-          <TabsTrigger value="direct">Direct Message</TabsTrigger>
-          <TabsTrigger value="group">Group Chat</TabsTrigger>
-          <TabsTrigger value="broadcast">Broadcast</TabsTrigger>
+          <TabsTrigger value="direct">{t("company.directMessage")}</TabsTrigger>
+          <TabsTrigger value="group">{t("company.groupChat")}</TabsTrigger>
+          <TabsTrigger value="broadcast">{t("company.broadcast")}</TabsTrigger>
         </TabsList>
         
         <TabsContent value="direct" className="flex-1 overflow-hidden flex flex-col">
           <p className="text-sm text-muted-foreground mb-4">
-            Select a single user to start a direct conversation
+            {t("company.selectSingle")}
           </p>
 
           <div className="mb-4">
-            <label htmlFor="direct-participant-emails" className="text-sm font-medium mb-1 block">Recipient email</label>
+            <label htmlFor="direct-participant-emails" className="text-sm font-medium mb-1 block">{t("company.recipientEmail")}</label>
             <Input
               id="direct-participant-emails"
               placeholder="counterparty@company.com"
@@ -112,20 +114,20 @@ const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) =>
         
         <TabsContent value="group" className="flex-1 overflow-hidden flex flex-col">
           <div className="mb-4">
-            <label className="text-sm font-medium mb-1 block">Group Name</label>
+            <label className="text-sm font-medium mb-1 block">{t("company.groupName")}</label>
             <Input
-              placeholder="Enter group name..."
+              placeholder={t("company.groupNamePlaceholder")}
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
             />
           </div>
           
           <p className="text-sm text-muted-foreground mb-4">
-            Select multiple users to create a group
+            {t("company.selectMultiple")}
           </p>
 
           <div className="mb-4">
-            <label htmlFor="group-participant-emails" className="text-sm font-medium mb-1 block">Participant emails</label>
+            <label htmlFor="group-participant-emails" className="text-sm font-medium mb-1 block">{t("company.participantEmails")}</label>
             <Input
               id="group-participant-emails"
               placeholder="alice@company.com, bob@company.com"
@@ -145,7 +147,7 @@ const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) =>
             <div className="mt-4">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Selected Users</span>
+                <span className="text-sm font-medium">{t("company.selectedUsers")}</span>
               </div>
               
               <div className="flex flex-wrap gap-2">
@@ -166,11 +168,11 @@ const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) =>
         
         <TabsContent value="broadcast" className="flex-1 overflow-hidden flex flex-col">
           <p className="text-sm text-muted-foreground mb-4">
-            Send a message to everyone at {company.name}
+            {t("company.broadcastTo", { company: company.name })}
           </p>
 
           <div className="mb-4">
-            <label htmlFor="broadcast-participant-emails" className="text-sm font-medium mb-1 block">Broadcast recipients</label>
+            <label htmlFor="broadcast-participant-emails" className="text-sm font-medium mb-1 block">{t("company.broadcastRecipients")}</label>
             <Input
               id="broadcast-participant-emails"
               placeholder="team@company.com, desk@company.com"
@@ -181,12 +183,12 @@ const CompanyDetail = ({ company, onBack, onCreateChat }: CompanyDetailProps) =>
           
           <div className="p-6 border border-border rounded-lg bg-accent/20 text-center">
             <Building className="h-8 w-8 text-primary mx-auto mb-3" />
-            <h3 className="font-medium text-lg mb-1">{company.name} Broadcast</h3>
+            <h3 className="font-medium text-lg mb-1">{t("company.broadcastTitle", { company: company.name })}</h3>
             <p className="text-muted-foreground mb-4">
-              Your message will be sent to all {company.users.length} users
+              {t("company.broadcastDesc", { count: company.users.length })}
             </p>
             <Button onClick={handleCreateChat}>
-              Create Broadcast Channel
+              {t("company.createBroadcast")}
             </Button>
           </div>
         </TabsContent>

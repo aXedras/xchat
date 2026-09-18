@@ -5,3 +5,9 @@ export interface ProfileUserData {
   role: string;
   avatarUrl: string;
 }
+
+export interface MyProfile {
+  fullName: string;
+  organization: string;
+  avatarUrl: string;
+}

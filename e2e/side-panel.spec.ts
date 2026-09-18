@@ -24,7 +24,7 @@ async function loginAs(
 ) {
   await page.goto("/");
   await page.getByLabel("Email").fill(credentials.email);
-  await page.getByLabel("Password").fill(credentials.password);
+  await page.getByLabel("Password", { exact: true }).fill(credentials.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 }
@@ -79,14 +79,15 @@ test("side panel default tab is deterministic across chat switches and preserves
   await expect(dialog).toBeHidden();
 
   // Sending does not auto-select the new conversation; select Bob's chat.
-  // Its default tab is "RFQ Context".
+  // Its default tab is "Customer"; "Inventory" is available because the
+  // chat has an RFQ.
   await alicePage.getByText(bob.name, { exact: true }).first().click();
   await expect(
-    alicePage.getByRole("button", { name: "RFQ Context" }),
-  ).toBeVisible();
-  await expect(
-    alicePage.getByRole("button", { name: "RFQ Context" }),
+    alicePage.getByRole("button", { name: "Customer" }),
   ).toHaveClass(/border-primary/);
+  await expect(
+    alicePage.getByRole("button", { name: "Inventory" }),
+  ).toBeVisible();
 
   // Manually select Inventory while staying in the same (Bob) chat.
   await alicePage.getByRole("button", { name: "Inventory" }).click();
@@ -95,7 +96,7 @@ test("side panel default tab is deterministic across chat switches and preserves
   ).toHaveClass(/border-primary/);
 
   // Switching to Carol's normal chat must not leave the invisible Inventory tab active;
-  // it must fall back to the Customer default, and Inventory/RFQ tabs must not render.
+  // it must fall back to the Customer default, and Inventory must not render.
   await alicePage.getByText(carol.name, { exact: true }).first().click();
   await expect(alicePage.getByRole("button", { name: "Customer" })).toHaveClass(
     /border-primary/,
@@ -103,22 +104,16 @@ test("side panel default tab is deterministic across chat switches and preserves
   await expect(
     alicePage.getByRole("button", { name: "Inventory" }),
   ).toHaveCount(0);
-  await expect(
-    alicePage.getByRole("button", { name: "RFQ Context" }),
-  ).toHaveCount(0);
   await expect(alicePage.getByTestId("customer-name")).toHaveText(carol.name);
 
-  // Switching back to Bob's RFQ chat resets to the RFQ Context default again,
+  // Switching back to Bob's RFQ chat resets to the Customer default again,
   // it does not resurrect the previously (manually) selected Inventory tab.
   await alicePage.getByText(bob.name, { exact: true }).first().click();
   await expect(
-    alicePage.getByRole("button", { name: "RFQ Context" }),
+    alicePage.getByRole("button", { name: "Customer" }),
   ).toHaveClass(/border-primary/);
 
-  // Selecting Customer manually, then triggering a same-chat update (another message),
-  // must preserve the manual selection.
-  await alicePage.getByRole("button", { name: "Customer" }).click();
-  await expect(alicePage.getByTestId("customer-name")).toHaveText(bob.name);
+  await aliceContext.close();
 
   await aliceContext.close();
 });

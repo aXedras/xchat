@@ -2,13 +2,28 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import ChatList from "@/components/ChatList";
 import ChatWindow from "@/components/ChatWindow";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import CompanySelector from "@/components/CompanySelector";
 import { Dialog } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useChatState } from "@/hooks/useChatState";
+import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
+import { Chat, RfqTerms } from "@/types/chat";
 
 const Dashboard = () => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const {
     selectedChat,
     activeChats,
@@ -29,15 +44,52 @@ const Dashboard = () => {
     rejectQuote,
     bookQuote,
     setSelectedChat,
+    deleteChat,
   } = useChatState();
 
   const [showNewChat, setShowNewChat] = useState(false);
+  const [pendingDeleteChat, setPendingDeleteChat] = useState<Chat | null>(null);
+  const [isDeletingChat, setIsDeletingChat] = useState(false);
 
   const handleSendMessage = async (content: string): Promise<boolean> => {
     if (!selectedChat?.counterpartyUserId) {
+      toast({ variant: "destructive", title: t("errors.noRecipient") });
       return false;
     }
     return sendDirect(selectedChat.counterpartyUserId, content);
+  };
+
+  const handleSendRfq = async (
+    terms: RfqTerms,
+    content: string,
+  ): Promise<boolean> => {
+    if (!selectedChat?.counterpartyUserId) {
+      toast({ variant: "destructive", title: t("errors.noRecipient") });
+      return false;
+    }
+    const result = await sendRfq(
+      [selectedChat.counterpartyUserId],
+      content,
+      terms,
+    );
+    return result !== undefined;
+  };
+
+  const handleRequestDeleteChat = (chatId: string) => {
+    setPendingDeleteChat(
+      activeChats.find((chat) => chat.id === chatId) ?? null,
+    );
+  };
+
+  const handleConfirmDeleteChat = async () => {
+    if (!pendingDeleteChat) return;
+    setIsDeletingChat(true);
+    try {
+      await deleteChat(pendingDeleteChat.id);
+    } finally {
+      setIsDeletingChat(false);
+      setPendingDeleteChat(null);
+    }
   };
 
   return (
@@ -47,7 +99,7 @@ const Dashboard = () => {
       <div className="flex flex-1 overflow-hidden">
         <div className="w-80 border-r border-border flex flex-col">
           <div className="p-4 border-b border-border flex justify-between items-center">
-            <h2 className="font-semibold">Messages</h2>
+            <h2 className="font-semibold">{t("dashboard.messages")}</h2>
             <Button
               variant="ghost"
               size="icon"
@@ -61,6 +113,7 @@ const Dashboard = () => {
             chats={activeChats}
             selectedChat={selectedChat}
             onSelectChat={handleChatSelect}
+            onDeleteChat={handleRequestDeleteChat}
           />
         </div>
 
@@ -76,6 +129,7 @@ const Dashboard = () => {
               )}
               responses={quoteResponses}
               onSendMessage={handleSendMessage}
+              onSendRfq={handleSendRfq}
               onLoadResponses={loadQuoteResponses}
               onSubmitQuote={submitQuote}
               onCounterQuote={counterQuote}
@@ -90,16 +144,15 @@ const Dashboard = () => {
                 </span>
               </div>
               <h2 className="text-2xl font-semibold mb-2">
-                Welcome to the xChat
+                {t("dashboard.welcome")}
               </h2>
               <p className="text-muted-foreground max-w-md">
-                Select a conversation or start a new chat with participants in
-                the precious metals industry
+                {t("dashboard.welcomeText")}
               </p>
               {error && <p className="mt-4 text-sm text-rose-600">{error}</p>}
               <Button className="mt-6" onClick={() => setShowNewChat(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Start New Conversation
+                {t("dashboard.startConversation")}
               </Button>
             </div>
           )}
@@ -117,6 +170,41 @@ const Dashboard = () => {
           onRetry={retryDispatch}
         />
       </Dialog>
+
+      <AlertDialog
+        open={pendingDeleteChat !== null}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingChat) setPendingDeleteChat(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("chat.deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("chat.deleteConfirmDescription", {
+                name: pendingDeleteChat?.name ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingChat}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeletingChat}
+              className={buttonVariants({ variant: "destructive" })}
+              onClick={(event) => {
+                // Radix closes the dialog on click by default; we control
+                // closing ourselves once the async delete has settled.
+                event.preventDefault();
+                void handleConfirmDeleteChat();
+              }}
+            >
+              {t("chat.deleteChat")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

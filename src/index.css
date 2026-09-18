@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -92,7 +91,7 @@
 }
 
 .bg-grid-pattern {
-  background-image: url('/grid-pattern.svg');
+  background-image: url("/grid-pattern.svg");
   background-repeat: repeat;
 }
 
@@ -100,35 +99,27 @@
   .glass-card {
     @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-lg;
   }
-  
+
   .chat-bubble {
     @apply p-3 rounded-lg max-w-[75%] animate-fade-in;
   }
-  
+
   .chat-bubble-sent {
     @apply chat-bubble bg-primary text-primary-foreground ml-auto;
   }
-  
+
   .chat-bubble-received {
     @apply chat-bubble bg-secondary text-secondary-foreground;
   }
-  
-  .macro-message {
-    @apply relative;
-  }
-  
-  .macro-text {
-    @apply font-mono text-xs bg-muted/50 p-1 rounded;
-  }
-  
+
   .chat-input {
     @apply w-full p-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring transition-shadow duration-200;
   }
-  
+
   .sidebar-item {
     @apply flex items-center gap-3 p-3 rounded-md hover:bg-accent/50 transition-colors duration-200;
   }
-  
+
   .sidebar-item-active {
     @apply bg-accent text-accent-foreground;
   }
@@ -145,4 +136,23 @@
 
 .text-balance {
   text-wrap: balance;
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-track {
+  animation: ticker-scroll 60s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
 }

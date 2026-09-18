@@ -9,6 +9,7 @@ import {
 import { ParticipantRecord, RfqTerms, SendMessagesResult } from "@/types/chat";
 import { SendInput } from "@/hooks/useOutgoingMessage";
 import RfqComposer from "@/components/chat/RfqComposer";
+import { useTranslation } from "react-i18next";
 
 interface CompanySelectorProps {
   open: boolean;
@@ -47,6 +48,7 @@ const CompanySelector = ({
   onSendRfq,
   onRetry,
 }: CompanySelectorProps) => {
+  const { t } = useTranslation();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [content, setContent] = useState("");
   const [mode, setMode] = useState<"standard" | "rfq">("standard");
@@ -96,7 +98,7 @@ const CompanySelector = ({
     setLocalError(null);
     const result = await onSend(selectedIds, content.trim());
     if (!result) {
-      setLocalError("Sending failed — please try again.");
+      setLocalError(t("composer.sendFailed"));
       return;
     }
     setPending({
@@ -115,7 +117,7 @@ const CompanySelector = ({
     setLocalError(null);
     const result = await onSendRfq(selectedIds, message, terms);
     if (!result) {
-      setLocalError("Sending the RFQ failed — please try again.");
+      setLocalError(t("composer.rfqSendFailed"));
       return;
     }
     setPending({
@@ -136,7 +138,7 @@ const CompanySelector = ({
     setLocalError(null);
     const result = await onRetry(pending, rejectedIds);
     if (!result) {
-      setLocalError("Retry failed — please try again.");
+      setLocalError(t("composer.retryFailedMsg"));
       return;
     }
     setLastResult(result);
@@ -148,10 +150,9 @@ const CompanySelector = ({
   return (
     <DialogContent className="max-w-xl max-h-[80vh] overflow-hidden flex flex-col">
       <DialogHeader>
-        <DialogTitle>Start New Conversation</DialogTitle>
+        <DialogTitle>{t("composer.startConversation")}</DialogTitle>
         <DialogDescription>
-          Select one or more participants and send the first message. Each
-          recipient gets their own bilateral conversation.
+          {t("composer.startConversationDesc")}
         </DialogDescription>
       </DialogHeader>
 
@@ -166,7 +167,7 @@ const CompanySelector = ({
           <div className="flex-1 overflow-y-auto space-y-1">
             {participants.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No participants available.
+                {t("composer.noParticipants")}
               </p>
             ) : (
               participants.map((participant) => {
@@ -198,7 +199,7 @@ const CompanySelector = ({
             {mode === "standard" ? (
               <textarea
                 className="w-full chat-input min-h-[80px] p-3 resize-none"
-                placeholder="Write your first message..."
+                placeholder={t("composer.writeFirstMessage")}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
               />
@@ -218,20 +219,20 @@ const CompanySelector = ({
                   className={`px-2 py-1 rounded ${mode === "standard" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
                   onClick={() => setMode("standard")}
                 >
-                  Message
+                  {t("composer.message")}
                 </button>
                 <button
                   type="button"
                   className={`px-2 py-1 rounded ${mode === "rfq" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
                   onClick={() => setMode("rfq")}
                 >
-                  RFQ
+                  {t("composer.rfq")}
                 </button>
               </div>
 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={onClose}>
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 {mode === "standard" && (
                   <Button
@@ -240,8 +241,9 @@ const CompanySelector = ({
                     }
                     onClick={() => void handleSend()}
                   >
-                    Send to {selectedIds.length > 0 ? selectedIds.length : ""}{" "}
-                    recipient{selectedIds.length === 1 ? "" : "s"}
+                    {selectedIds.length === 1
+                      ? t("composer.sendToOne", { count: selectedIds.length })
+                      : t("composer.sendToMany", { count: selectedIds.length })}
                   </Button>
                 )}
               </div>
@@ -251,7 +253,7 @@ const CompanySelector = ({
       ) : (
         <div className="space-y-3">
           <div className="text-sm font-medium">
-            Dispatch status:{" "}
+            {t("composer.dispatchStatus")}{" "}
             <span className="uppercase">{lastResult.dispatch.status}</span>
           </div>
 
@@ -277,8 +279,12 @@ const CompanySelector = ({
                     }
                   >
                     {recipient.status === "accepted"
-                      ? "Accepted"
-                      : `Rejected${recipient.errorCode ? ` (${recipient.errorCode})` : ""}`}
+                      ? t("common.accepted")
+                      : recipient.errorCode
+                        ? t("composer.rejectedWithCode", {
+                            code: recipient.errorCode,
+                          })
+                        : t("common.rejected")}
                   </span>
                 </div>
               );
@@ -287,11 +293,11 @@ const CompanySelector = ({
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>
-              Close
+              {t("common.close")}
             </Button>
             {rejectedIds.length > 0 && (
               <Button disabled={sending} onClick={() => void handleRetry()}>
-                Retry failed recipients
+                {t("composer.retryFailed")}
               </Button>
             )}
           </div>

@@ -5,6 +5,7 @@ import { NotificationsForm } from "./NotificationsForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Shield, Bell } from "lucide-react";
 import { ProfileUserData } from "@/types/profile";
+import { useTranslation } from "react-i18next";
 
 interface ProfileTabContentProps {
   userData: ProfileUserData;
@@ -14,20 +15,22 @@ interface ProfileTabContentProps {
 }
 
 const ProfileTabContent = ({ userData, setUserData, isEditing, setIsEditing }: ProfileTabContentProps) => {
+  const { t } = useTranslation();
+
   return (
     <Tabs defaultValue="profile" className="w-full">
       <TabsList className="grid grid-cols-3 max-w-md mb-6">
         <TabsTrigger value="profile" className="flex items-center gap-2">
           <User className="h-4 w-4" />
-          <span>Profile</span>
+          <span>{t("profile.profile")}</span>
         </TabsTrigger>
         <TabsTrigger value="security" className="flex items-center gap-2">
           <Shield className="h-4 w-4" />
-          <span>Security</span>
+          <span>{t("profile.security")}</span>
         </TabsTrigger>
         <TabsTrigger value="notifications" className="flex items-center gap-2">
           <Bell className="h-4 w-4" />
-          <span>Notifications</span>
+          <span>{t("profile.notifications")}</span>
         </TabsTrigger>
       </TabsList>
       
