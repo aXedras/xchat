@@ -57,15 +57,16 @@ Every new user-facing key must be added to `en.json`, `de.json` and `fr.json` wi
 ## Quality gates
 
 ```
-npm run build            # type-check + production build
-npm run lint             # eslint
-npm run jscpd            # duplicate-code check
-npm run depcruise        # dependency-direction rules
-npm run semgrep:arch     # architecture rules
-npm run ci:verify        # lint + build + jscpd + semgrep:arch
-npm run supabase:reset   # rebuild local DB (migrations + seed)
-npm run supabase:test    # pgTAP tests
-npm run test:e2e         # Playwright (needs a running Supabase + dev server)
+npm run typecheck         # tsc -b (TypeScript type-check)
+npm run build             # type-check + production build
+npm run lint              # eslint
+npm run jscpd             # duplicate-code check
+npm run depcruise         # dependency-direction rules
+npm run semgrep:arch      # architecture rules
+npm run ci:verify         # lint + build + jscpd + depcruise + semgrep:arch
+npm run supabase:reset    # rebuild local DB (migrations + seed)
+npm run supabase:test     # pgTAP tests
+npm run test:e2e          # Playwright (needs a running Supabase + dev server)
 ```
 
 Run the relevant gates before considering a change complete. Never bypass a failing gate.
