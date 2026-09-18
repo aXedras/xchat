@@ -70,6 +70,7 @@
     "loadResponses": "Antworten konnten nicht geladen werden",
     "send": "Nachricht konnte nicht gesendet werden",
     "performAction": "Aktion konnte nicht ausgeführt werden",
+    "noRecipient": "Kein Empfänger ausgewählt — Senden nicht möglich",
     "deleteChatTitle": "Löschen fehlgeschlagen",
     "deleteChat": "Dieser Chat konnte nicht gelöscht werden",
     "deleteChatHasActivity": "Dieser Chat enthält Angebotsantworten oder ein gebuchtes Geschäft und kann nicht gelöscht werden"
@@ -200,6 +201,7 @@
   "macroHelp": {
     "title": "Leitfaden Branchen-Makros",
     "subtitle": "Verwende diese standardisierten Befehle, um schnell in der Branchenterminologie zu kommunizieren.",
+    "rfqShortcut": "Tipp: Gib im Eingabefeld „rfq\" oder „/rfq\" ein und drücke Enter, um den RFQ-Editor zu öffnen.",
     "terminology": "Handelsterminologie:",
     "terminologyText": "Im Edelmetallhandel steht BID für Kaufinteresse, während OFFER für Verkaufsinteresse steht. ASK und RFQ stehen beide für Angebotsanfragen auf der Kaufseite, wobei RFQ die explizitere kaufmännische Formulierung ist.",
     "askVsRfq": "ASK vs. RFQ:",

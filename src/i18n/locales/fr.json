@@ -70,6 +70,7 @@
     "loadResponses": "Impossible de charger les réponses",
     "send": "Impossible d'envoyer le message",
     "performAction": "Impossible d'exécuter l'action",
+    "noRecipient": "Aucun destinataire sélectionné — envoi impossible",
     "deleteChatTitle": "Suppression impossible",
     "deleteChat": "Impossible de supprimer ce chat",
     "deleteChatHasActivity": "Ce chat contient des réponses de devis ou une transaction validée et ne peut pas être supprimé"
@@ -200,6 +201,7 @@
   "macroHelp": {
     "title": "Guide des macros sectorielles",
     "subtitle": "Utilisez ces commandes standardisées pour communiquer rapidement avec la terminologie du secteur.",
+    "rfqShortcut": "Astuce : saisissez « rfq » ou « /rfq » dans le champ de message et appuyez sur Entrée pour ouvrir l'éditeur de devis.",
     "terminology": "Terminologie de trading :",
     "terminologyText": "Dans le négoce des métaux précieux, BID représente l'intérêt d'achat, tandis que OFFER représente l'intérêt de vente. ASK et RFQ représentent tous deux des demandes de cotation côté achat, RFQ étant la formulation commerciale la plus explicite.",
     "askVsRfq": "ASK vs RFQ :",

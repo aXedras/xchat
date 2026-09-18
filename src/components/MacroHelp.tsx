@@ -81,6 +81,10 @@ const MacroHelp = () => {
           </DialogDescription>
         </DialogHeader>
         
+        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-800 text-sm">
+          {t("macroHelp.rfqShortcut")}
+        </div>
+
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-sm">
           <strong>{t("macroHelp.terminology")}</strong> {t("macroHelp.terminologyText")}
         </div>

@@ -17,11 +17,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useChatState } from "@/hooks/useChatState";
+import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Chat } from "@/types/chat";
+import { Chat, RfqTerms } from "@/types/chat";
 
 const Dashboard = () => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const {
     selectedChat,
     activeChats,
@@ -51,9 +53,26 @@ const Dashboard = () => {
 
   const handleSendMessage = async (content: string): Promise<boolean> => {
     if (!selectedChat?.counterpartyUserId) {
+      toast({ variant: "destructive", title: t("errors.noRecipient") });
       return false;
     }
     return sendDirect(selectedChat.counterpartyUserId, content);
+  };
+
+  const handleSendRfq = async (
+    terms: RfqTerms,
+    content: string,
+  ): Promise<boolean> => {
+    if (!selectedChat?.counterpartyUserId) {
+      toast({ variant: "destructive", title: t("errors.noRecipient") });
+      return false;
+    }
+    const result = await sendRfq(
+      [selectedChat.counterpartyUserId],
+      content,
+      terms,
+    );
+    return result !== undefined;
   };
 
   const handleRequestDeleteChat = (chatId: string) => {
@@ -110,6 +129,7 @@ const Dashboard = () => {
               )}
               responses={quoteResponses}
               onSendMessage={handleSendMessage}
+              onSendRfq={handleSendRfq}
               onLoadResponses={loadQuoteResponses}
               onSubmitQuote={submitQuote}
               onCounterQuote={counterQuote}

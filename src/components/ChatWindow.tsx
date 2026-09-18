@@ -1,4 +1,4 @@
-import { Chat, Message, QuoteInvitationRecord, QuoteResponseRecord } from "@/types/chat";
+import { Chat, Message, QuoteInvitationRecord, QuoteResponseRecord, RfqTerms } from "@/types/chat";
 import MessageInput from "@/components/MessageInput";
 import ChatHeader from "./chat/ChatHeader";
 import MessageList from "./chat/MessageList";
@@ -13,6 +13,7 @@ interface ChatWindowProps {
   invitations: QuoteInvitationRecord[];
   responses: Record<string, QuoteResponseRecord[]>;
   onSendMessage: (content: string) => Promise<boolean> | boolean;
+  onSendRfq: (terms: RfqTerms, content: string) => Promise<boolean> | boolean;
   onLoadResponses: (invitationId: string) => Promise<void>;
   onSubmitQuote: (invitationId: string, premium: string, notes?: string | null) => Promise<unknown>;
   onCounterQuote: (invitationId: string, parentResponseId: string, premium: string, notes?: string | null) => Promise<unknown>;
@@ -28,6 +29,7 @@ const ChatWindow = ({
   invitations,
   responses,
   onSendMessage,
+  onSendRfq,
   onLoadResponses,
   onSubmitQuote,
   onCounterQuote,
@@ -46,21 +48,21 @@ const ChatWindow = ({
       )}
       <div className="flex-1 min-h-0 flex flex-col xl:flex-row">
         <div className="min-h-0 flex-1 flex flex-col">
-          <MessageList messages={messages} />
-          <MessageInput disabled={sending} onSendMessage={onSendMessage} />
+          <MessageList
+            messages={messages}
+            invitations={invitations}
+            responses={responses}
+            currentUserId={currentUserId}
+            busy={sending}
+            onLoadResponses={onLoadResponses}
+            onSubmitQuote={onSubmitQuote}
+            onCounterQuote={onCounterQuote}
+            onRejectQuote={onRejectQuote}
+            onBookQuote={onBookQuote}
+          />
+          <MessageInput disabled={sending} onSendMessage={onSendMessage} onSendRfq={onSendRfq} />
         </div>
-        <SidePanelContainer
-          chat={chat}
-          currentUserId={currentUserId}
-          invitations={invitations}
-          responses={responses}
-          busy={sending}
-          onLoadResponses={onLoadResponses}
-          onSubmitQuote={onSubmitQuote}
-          onCounterQuote={onCounterQuote}
-          onRejectQuote={onRejectQuote}
-          onBookQuote={onBookQuote}
-        />
+        <SidePanelContainer chat={chat} invitations={invitations} />
       </div>
     </div>
   );

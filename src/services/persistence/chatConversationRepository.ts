@@ -62,7 +62,7 @@ export function mapMessageRecordToMessage(record: MessageRecord): Message {
     createdAt: record.createdAt,
     status: "delivered",
     isMine,
-    isMacro: false,
+    type: record.type,
     quoteRequestId: record.quoteRequestId ?? undefined,
   };
 }

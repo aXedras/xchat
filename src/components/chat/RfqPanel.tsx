@@ -9,6 +9,7 @@ interface RfqPanelProps {
   responses: QuoteResponseRecord[];
   isOwner: boolean;
   busy: boolean;
+  className?: string;
   onLoadResponses: (invitationId: string) => void;
   onSubmitQuote: (invitationId: string, premium: string, notes?: string | null) => Promise<unknown>;
   onCounterQuote: (invitationId: string, parentResponseId: string, premium: string, notes?: string | null) => Promise<unknown>;
@@ -27,6 +28,7 @@ const RfqPanel = ({
   responses,
   isOwner,
   busy,
+  className,
   onLoadResponses,
   onSubmitQuote,
   onCounterQuote,
@@ -92,7 +94,7 @@ const RfqPanel = ({
   };
 
   return (
-    <div className="border-t border-border p-4 space-y-3 text-sm">
+    <div className={className ?? "border-t border-border p-4 space-y-3 text-sm"}>
       <div className="flex items-center justify-between">
         <span className="font-semibold">RFQ</span>
         <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase ${statusClass[invitation.effectiveStatus] ?? ""}`}>

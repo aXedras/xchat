@@ -34,7 +34,7 @@ export interface Message {
   quoteRequestId?: string;
   status: "sent" | "delivered" | "read";
   isMine: boolean;
-  isMacro?: boolean;
+  type?: MessageType;
 }
 
 export type UpdateChatListEntry = (

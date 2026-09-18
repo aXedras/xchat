@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Chat, ParticipantRecord, QuoteInvitationRecord, QuoteResponseRecord, SendMessagesResult } from "@/types/chat";
+import { Chat, ParticipantRecord, QuoteInvitationRecord, QuoteResponseRecord, RfqTerms, SendMessagesResult } from "@/types/chat";
 import { useChatLists } from "./useChatLists";
 import { useMessages } from "./useMessages";
 import { useChatSynchronization } from "./useChatSynchronization";
@@ -129,8 +129,13 @@ export function useChatState() {
   );
 
   const sendRfq = useCallback(
-    (recipientIds: string[], content: string, rfqTerms: Record<string, unknown>) =>
-      dispatchSend({ recipientIds, content, messageType: "rfq", rfqTerms }),
+    (recipientIds: string[], content: string, rfqTerms: RfqTerms) =>
+      dispatchSend({
+        recipientIds,
+        content,
+        messageType: "rfq",
+        rfqTerms: rfqTerms as unknown as Record<string, unknown>,
+      }),
     [dispatchSend],
   );
 

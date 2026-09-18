@@ -70,6 +70,7 @@
     "loadResponses": "Unable to load responses",
     "send": "Unable to send message",
     "performAction": "Unable to perform action",
+    "noRecipient": "No recipient selected — unable to send",
     "deleteChatTitle": "Delete failed",
     "deleteChat": "Unable to delete this chat",
     "deleteChatHasActivity": "This chat has quote responses or a booked deal and cannot be deleted"
@@ -200,6 +201,7 @@
   "macroHelp": {
     "title": "Industry Macros Guide",
     "subtitle": "Use these standardized commands to quickly communicate with industry terminology.",
+    "rfqShortcut": "Tip: type \"rfq\" or \"/rfq\" in the message input and press Enter to open the RFQ editor.",
     "terminology": "Trading Terminology:",
     "terminologyText": "In precious metals trading, BID represents buying interest, while OFFER represents selling interest. ASK and RFQ both represent quote requests on the buy side, with RFQ as the more explicit commercial wording.",
     "askVsRfq": "ASK vs RFQ:",

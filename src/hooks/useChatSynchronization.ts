@@ -40,15 +40,20 @@ export function useChatSynchronization({
       try {
         const message = await messageRepository.getMessage(event.messageId);
         if (message) {
+          if (message.type === "rfq") {
+            try {
+              await refreshQuoteInvitations();
+            } catch {
+              // The message still renders without its invitation and is
+              // recovered by the next conversation load.
+            }
+          }
           const mapped = mapMessageRecordToMessage(message);
           setMessages((previous) => ({
             ...previous,
             [message.conversationId]: mergeMessages(previous[message.conversationId] ?? [], [mapped]),
           }));
           void refreshChats();
-          if (message.type === "rfq") {
-            void refreshQuoteInvitations();
-          }
         }
       } catch {
         // A missed message is recovered by the next conversation load.
