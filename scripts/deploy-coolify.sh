@@ -5,6 +5,7 @@ set -euo pipefail
 : "${COOLIFY_TOKEN:?COOLIFY_TOKEN is required}"
 : "${COOLIFY_APP_UUID:?COOLIFY_APP_UUID is required}"
 : "${IMAGE_DIGEST:?IMAGE_DIGEST is required}"
+: "${IMAGE_TAG:?IMAGE_TAG is required}"
 : "${RELEASE_SHA:?RELEASE_SHA is required}"
 : "${XCHAT_IMAGE_REPOSITORY:?XCHAT_IMAGE_REPOSITORY is required}"
 : "${EXPECTED_ENVIRONMENT:?EXPECTED_ENVIRONMENT is required}"
@@ -19,7 +20,7 @@ case "$IMAGE_DIGEST" in
   *) printf 'IMAGE_DIGEST must be a sha256 digest\n' >&2; exit 64 ;;
 esac
 
-image="${XCHAT_IMAGE_REPOSITORY}@${IMAGE_DIGEST}"
+image="${XCHAT_IMAGE_REPOSITORY}:${IMAGE_TAG}"
 
 curl --fail-with-body --silent --show-error \
   -X PATCH \
@@ -28,8 +29,8 @@ curl --fail-with-body --silent --show-error \
   -H 'Content-Type: application/json' \
   --data "$(jq -n \
     --arg image "$XCHAT_IMAGE_REPOSITORY" \
-    --arg tag "$IMAGE_DIGEST" \
-    '{build_pack: "dockerimage", docker_registry_image_name: $image, docker_registry_image_tag: $tag, ports_exposes: "8080", health_check_enabled: true, health_check_port: "8080", health_check_path: "/index.html"}')"
+    --arg tag "$IMAGE_TAG" \
+    '{docker_registry_image_name: $image, docker_registry_image_tag: $tag, ports_exposes: "8080", health_check_enabled: true, health_check_port: "8080", health_check_path: "/index.html"}')"
 
 for item in "XCHAT_IMAGE=${image}" "XCHAT_RELEASE_SHA=${RELEASE_SHA}" "XCHAT_EXPECTED_ENVIRONMENT=${EXPECTED_ENVIRONMENT}"; do
   key=${item%%=*}

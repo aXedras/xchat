@@ -8,7 +8,7 @@ grep -q 'workflow_dispatch:' "$workflow"
 grep -q 'deploy_production' "$workflow"
 grep -q 'image_digest' "$workflow"
 grep -q 'concurrency:' "$workflow"
-grep -q '@\${IMAGE_DIGEST}' scripts/deploy-coolify.sh
+grep -q ':\${IMAGE_TAG}' scripts/deploy-coolify.sh
 grep -q 'sha256:\*)' scripts/deploy-coolify.sh
 grep -q '\${XCHAT_SUPABASE_URL:?XCHAT_SUPABASE_URL is required}' "$compose"
 grep -q '\${XCHAT_SUPABASE_PUBLISHABLE_KEY:?XCHAT_SUPABASE_PUBLISHABLE_KEY is required}' "$compose"
