@@ -372,7 +372,7 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: |
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/axedras/xchat:${{ github.sha }}
 
   deploy-integration:
     name: Deploy Integration
@@ -394,7 +394,7 @@ jobs:
       IMAGE_DIGEST: ${{ needs.ghcr-publish.outputs.image_digest }}
       RELEASE_SHA: ${{ github.sha }}
       EXPECTED_ENVIRONMENT: integration
-      XCHAT_IMAGE_REPOSITORY: ghcr.io/${{ github.repository }}
+      XCHAT_IMAGE_REPOSITORY: ghcr.io/axedras/xchat
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Validate deployment configuration
@@ -424,7 +424,7 @@ jobs:
       IMAGE_DIGEST: ${{ needs.ghcr-publish.outputs.image_digest }}
       RELEASE_SHA: ${{ github.sha }}
       EXPECTED_ENVIRONMENT: production
-      XCHAT_IMAGE_REPOSITORY: ghcr.io/${{ github.repository }}
+      XCHAT_IMAGE_REPOSITORY: ghcr.io/axedras/xchat
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Validate deployment configuration
