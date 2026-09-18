@@ -14,7 +14,7 @@ Recommended setup
 4. Open http://localhost:8080 in a browser.
 
 Default mode
-- XCHAT_IMAGE_TAG=latest
+- XCHAT_IMAGE_REFERENCE=ghcr.io/marcopersi/xchat@sha256:<digest>
 - XCHAT_API_MODE=mock
 - XCHAT_PERSISTENCE_PROVIDER=local
 - XCHAT_REALTIME_CARRIER=local
@@ -34,4 +34,4 @@ Run scripts/windows/update.ps1 from the bundle root.
 
 Operational note
 Using ghcr.io/marcopersi/xchat:latest is convenient for quick tests, but it is not immutable.
-For controlled environments, set XCHAT_IMAGE_TAG to a GitHub Release tag or commit-specific image tag.
+For controlled environments, set XCHAT_IMAGE_REFERENCE to an immutable GHCR digest.

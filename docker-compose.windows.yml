@@ -1,6 +1,6 @@
 services:
   xchat:
-    image: ghcr.io/marcopersi/xchat:${XCHAT_IMAGE_TAG:-latest}
+    image: ${XCHAT_IMAGE_REFERENCE:?XCHAT_IMAGE_REFERENCE is required}
     container_name: xchat
     restart: unless-stopped
     pull_policy: always

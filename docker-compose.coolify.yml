@@ -1,0 +1,23 @@
+services:
+  xchat:
+    image: ${XCHAT_IMAGE:?XCHAT_IMAGE is required}
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      XCHAT_API_MODE: real
+      XCHAT_PERSISTENCE_PROVIDER: supabase
+      XCHAT_REALTIME_CARRIER: supabase
+      XCHAT_REALTIME_CHANNEL: ${XCHAT_REALTIME_CHANNEL:-xchat-realtime}
+      XCHAT_REALTIME_EVENT: ${XCHAT_REALTIME_EVENT:-message}
+      XCHAT_SUPABASE_URL: ${XCHAT_SUPABASE_URL:?XCHAT_SUPABASE_URL is required}
+      XCHAT_SUPABASE_PUBLISHABLE_KEY: ${XCHAT_SUPABASE_PUBLISHABLE_KEY:?XCHAT_SUPABASE_PUBLISHABLE_KEY is required}
+      XCHAT_SUPABASE_AUTH_REDIRECT_URL: ${XCHAT_SUPABASE_AUTH_REDIRECT_URL:?XCHAT_SUPABASE_AUTH_REDIRECT_URL is required}
+      XCHAT_VENDOR_ADMIN_EMAIL: ${XCHAT_VENDOR_ADMIN_EMAIL:?XCHAT_VENDOR_ADMIN_EMAIL is required}
+      XCHAT_VENDOR_ADMIN_PASSWORD: ${XCHAT_VENDOR_ADMIN_PASSWORD:?XCHAT_VENDOR_ADMIN_PASSWORD is required}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/index.html"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
