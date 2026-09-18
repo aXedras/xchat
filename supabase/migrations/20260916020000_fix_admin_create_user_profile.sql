@@ -13,7 +13,7 @@ CREATE OR REPLACE FUNCTION public.admin_create_user(
 )
 RETURNS UUID
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   v_user_id UUID;
@@ -50,7 +50,7 @@ BEGIN
     'authenticated',
     'authenticated',
     p_email,
-    crypt(p_password, gen_salt('bf')),
+    extensions.crypt(p_password, extensions.gen_salt('bf')),
     NOW(),
     p_phone,
     '{"provider":"email","providers":["email"]}'::jsonb,
@@ -67,7 +67,7 @@ BEGIN
 
   -- Create role
   INSERT INTO public.user_roles ("user_id", "role")
-  VALUES (v_user_id, p_role::app_role);
+  VALUES (v_user_id, p_role::public.app_role);
 
   RETURN v_user_id;
 EXCEPTION
