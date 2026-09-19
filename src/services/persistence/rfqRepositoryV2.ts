@@ -6,6 +6,7 @@ import {
   QuoteRequestValidationResult,
   RecipientInvitationProjection,
   RequesterRfqProjection,
+  RfqDispatchRecipient,
   RfqDispatchResult,
   TransactionTypeAvailability,
 } from "@/types/rfq";
@@ -110,6 +111,49 @@ export interface CreateAndDispatchInput {
   message?: string;
 }
 
+function parseDispatchResult(value: unknown): RfqDispatchResult {
+  const record = asRecord(value);
+  const dispatch = asRecord(record.dispatch);
+  const recipients: RfqDispatchRecipient[] = Array.isArray(dispatch.recipients)
+    ? dispatch.recipients.map((entry) => {
+        const r = asRecord(entry);
+        return {
+          requestedRecipientUserId: String(r.requestedRecipientUserId),
+          recipientUserId:
+            typeof r.recipientUserId === "string" ? r.recipientUserId : null,
+          status: (r.status === "accepted" ? "accepted" : "rejected") as
+            | "accepted"
+            | "rejected",
+          errorCode: typeof r.errorCode === "string" ? r.errorCode : null,
+          messageId: typeof r.messageId === "string" ? r.messageId : null,
+        };
+      })
+    : [];
+  return {
+    ok: record.ok === true,
+    quoteRequestId: String(record.quoteRequestId),
+    dispatch: {
+      id: String(dispatch.id),
+      status:
+        dispatch.status === "partial"
+          ? "partial"
+          : dispatch.status === "failed"
+            ? "failed"
+            : "completed",
+      messages: Array.isArray(dispatch.messages)
+        ? dispatch.messages.map((entry) => {
+            const m = asRecord(entry);
+            return {
+              recipientUserId: String(m.recipientUserId),
+              message: asRecord(m.message),
+            };
+          })
+        : [],
+      recipients,
+    },
+  };
+}
+
 async function invoke<T>(
   rpcName: string,
   args: Record<string, unknown>,
@@ -165,7 +209,7 @@ export const rfqRepositoryV2 = {
   },
 
   async createAndDispatch(input: CreateAndDispatchInput): Promise<RfqDispatchResult> {
-    return invoke<RfqDispatchResult>("create_and_dispatch_quote_request_v2", {
+    const data = await invoke<unknown>("create_and_dispatch_quote_request_v2", {
       request: {
         clientOperationId: input.clientOperationId,
         transactionType: input.transactionType,
@@ -174,6 +218,7 @@ export const rfqRepositoryV2 = {
         message: input.message ?? "",
       },
     });
+    return parseDispatchResult(data);
   },
 
   async getRequesterProjection(requestId: string): Promise<RequesterRfqProjection> {

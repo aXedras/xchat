@@ -188,6 +188,7 @@
             ],
             "additionalProperties": false
           },
+          "minItems": 1,
           "maxItems": 100
         }
       },

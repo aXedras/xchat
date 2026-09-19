@@ -26,6 +26,8 @@ Organization-based trading platform on top of the existing xChat chat:
 - Rate limiting and Unicode control-character normalization are deployment
   follow-ups (see docs/trading/security.md).
 - `vite` and `react-router` are EOL majors (dev/build tooling debt).
+- Document tags are written by the document worker; the tag-writing step is an
+  open item for the worker (see docs/trading/rollout.md).
 
 ## Operator checklist
 

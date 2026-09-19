@@ -73,3 +73,16 @@ The SQL validator additionally:
   optional removal) and stores the canonical form plus its hash;
 - rejects unknown root keys and unknown tab keys fail-closed;
 - never trusts client-provided `schema_version` beyond the allowlist.
+
+## Timestamp policy (L-2)
+
+- `clock_timestamp()` is used for deadline/expiry comparisons (real wall-clock).
+- `now()` (transaction start time) is used for `created_at`/`booked_at`/audit
+  timestamps so all rows of one transaction share a consistent timestamp.
+- Idempotency payload comparison uses `md5(terms::text)` of the canonical JSON.
+
+## Optimistic locking (Release 2)
+
+`expectedVersion` (bauplan §11.3) is not enforced in Release 1; aggregate
+version conflicts are handled via idempotency keys and advisory locks instead.
+Optimistic locking is deferred to Release 2.

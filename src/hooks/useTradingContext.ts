@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { organizationRepository } from "@/services/persistence/organizationRepository";
+import { authService } from "@/services/authService";
 import { MessagingError } from "@/services/persistence/errors";
 import { TradingContext } from "@/types/trading";
 
 let cachedContext: TradingContext | null = null;
+let cachedUserId: string | null = null;
 let inFlight: Promise<TradingContext> | null = null;
+
+export function invalidateTradingContext() {
+  cachedContext = null;
+  cachedUserId = null;
+  inFlight = null;
+}
 
 export function useTradingContext() {
   const [context, setContext] = useState<TradingContext | null>(cachedContext);
@@ -19,6 +27,7 @@ export function useTradingContext() {
       }
       const result = await inFlight;
       cachedContext = result;
+      cachedUserId = result.userId;
       inFlight = null;
       setContext(result);
       setError(null);
@@ -31,9 +40,18 @@ export function useTradingContext() {
   }, []);
 
   useEffect(() => {
+    const unsubscribe = authService.subscribeAppAuth((identity) => {
+      const userId = identity?.userId ?? null;
+      if (cachedUserId !== userId) {
+        invalidateTradingContext();
+        setContext(null);
+        void load();
+      }
+    });
     if (cachedContext === null) {
       void load();
     }
+    return unsubscribe;
   }, [load]);
 
   return { context, loading, error, refresh: load };

@@ -23,6 +23,15 @@ function classifyError(error: unknown): {
   if (/ENOENT|typst unavailable|command not found/i.test(message)) {
     return { code: "typst_unavailable", transient: true };
   }
+  if (/template.*not found|no such file|EACCES/i.test(message)) {
+    return { code: "template_error", transient: false };
+  }
+  if (/invalid.*pdf|magic bytes/i.test(message)) {
+    return { code: "render_validation_failed", transient: false };
+  }
+  if (/storage.*upload|bucket/i.test(message)) {
+    return { code: "storage_upload_failed", transient: true };
+  }
   return { code: "render_failed", transient: true };
 }
 
@@ -35,8 +44,10 @@ function requireClient(): SupabaseClient {
   });
 }
 
-function storagePath(documentId: string, versionNo: number): string {
-  return `deal/${documentId}/document/${documentId}/version/${versionNo}/document.pdf`;
+function storagePath(documentId: string): string {
+  // The document_versions table keeps the per-version SHA-256/metadata; the
+  // storage object is keyed by document id and overwritten on re-render.
+  return `deal/${documentId}/document.pdf`;
 }
 
 async function processOne(
@@ -69,7 +80,7 @@ async function processOne(
 
     const { error: uploadError } = await client.storage
       .from(BUCKET)
-      .upload(storagePath(documentId, 1), rendered.pdf, {
+      .upload(storagePath(documentId), rendered.pdf, {
         contentType: "application/pdf",
       });
     if (uploadError) {
@@ -78,7 +89,7 @@ async function processOne(
 
     await client.rpc("complete_document_generation_job", {
       p_job_id: jobId,
-      p_storage_path: storagePath(documentId, 1),
+      p_storage_path: storagePath(documentId),
       p_sha256: rendered.sha256,
       p_mime_type: rendered.mimeType,
       p_size_bytes: rendered.sizeBytes,

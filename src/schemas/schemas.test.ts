@@ -108,6 +108,12 @@ describe("Quotation schemas", () => {
       (fixture.commercial as Record<string, unknown>).sneaky = "value";
       expect(schema.safeParse(fixture).success).toBe(false);
     });
+
+    it(`${transactionType}: rejects an empty pricing component list`, () => {
+      const fixture = quotationFixture();
+      (fixture as Record<string, unknown>).pricingComponents = [];
+      expect(schema.safeParse(fixture).success).toBe(false);
+    });
   }
 });
 

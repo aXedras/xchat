@@ -139,7 +139,7 @@ export const quotationTermsRoot = z
     material: quotationMaterialFields,
     assay: quotationAssayFields,
     logistics: quotationLogisticsFields,
-    pricingComponents: z.array(pricingComponent).max(100),
+    pricingComponents: z.array(pricingComponent).min(1).max(100),
   })
   .strict();
 

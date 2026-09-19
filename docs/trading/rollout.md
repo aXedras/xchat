@@ -13,6 +13,14 @@ Date: 2026-09-18
 3. **Read-only legacy**: legacy rows remain readable through the repository
    adapter (version 0); they are never written as V2.
 
+## Deployment prerequisites
+
+- Provision the private Supabase Storage buckets `trade-documents`,
+  `trade-document-sources` and `trade-volume-imports` via the Supabase
+  CLI/Dashboard (public access and client bucket listing disabled).
+- Generate and supply the `SUPABASE_SERVICE_ROLE_KEY` to the document-worker
+  and outbox worker as server-side secrets (never `VITE_*`).
+
 ## Feature-flag rollout
 
 1. Start with the internal test organization only (`tradingOrganizationsV2`,

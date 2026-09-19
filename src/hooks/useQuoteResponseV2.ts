@@ -5,25 +5,26 @@ import { QuotationTermsV2 } from "@/schemas";
 
 export function useQuoteResponseV2() {
   const [sending, setSending] = useState(false);
-  const clientResponseIdRef = useRef<string | null>(null);
+  const submitIdRef = useRef<string | null>(null);
+  const counterIdRef = useRef<string | null>(null);
 
   const submit = useCallback(
     async (invitationId: string, terms: QuotationTermsV2): Promise<unknown> => {
       setSending(true);
       try {
-        if (!clientResponseIdRef.current) {
-          clientResponseIdRef.current = crypto.randomUUID();
+        if (!submitIdRef.current) {
+          submitIdRef.current = crypto.randomUUID();
         }
         const result = await rfqRepositoryV2.submitQuoteResponseV2({
           invitationId,
-          clientResponseId: clientResponseIdRef.current,
+          clientResponseId: submitIdRef.current,
           responseTerms: terms as unknown as Record<string, unknown>,
         });
-        clientResponseIdRef.current = null;
+        submitIdRef.current = null;
         return result;
       } catch (error) {
         if (!(error instanceof MessagingError && error.retryable)) {
-          clientResponseIdRef.current = null;
+          submitIdRef.current = null;
         }
         throw error;
       } finally {
@@ -37,19 +38,19 @@ export function useQuoteResponseV2() {
     async (parentResponseId: string, terms: QuotationTermsV2): Promise<unknown> => {
       setSending(true);
       try {
-        if (!clientResponseIdRef.current) {
-          clientResponseIdRef.current = crypto.randomUUID();
+        if (!counterIdRef.current) {
+          counterIdRef.current = crypto.randomUUID();
         }
         const result = await rfqRepositoryV2.counterQuoteResponseV2({
           parentResponseId,
-          clientResponseId: clientResponseIdRef.current,
+          clientResponseId: counterIdRef.current,
           responseTerms: terms as unknown as Record<string, unknown>,
         });
-        clientResponseIdRef.current = null;
+        counterIdRef.current = null;
         return result;
       } catch (error) {
         if (!(error instanceof MessagingError && error.retryable)) {
-          clientResponseIdRef.current = null;
+          counterIdRef.current = null;
         }
         throw error;
       } finally {

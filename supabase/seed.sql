@@ -152,3 +152,4 @@ UPDATE public.profile SET organization = 'xChat Platform' WHERE user_id = '10000
 -- Enable the transaction RFQ V2 flow for local development and e2e. Production
 -- keeps flags off via the migration default (feature_flags seeded disabled).
 UPDATE public.feature_flags SET enabled = true WHERE key = 'transactionRfqV2';
+UPDATE public.feature_flags SET enabled = true WHERE key = 'tradingOrganizationsV2';

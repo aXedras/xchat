@@ -4,7 +4,7 @@
 
 BEGIN;
 
-SELECT plan(339);
+SELECT plan(344);
 
 -- M0a: Realtime capability prerequisites
 SELECT has_schema('realtime', 'realtime schema exists');
@@ -2533,7 +2533,7 @@ SELECT is(
 );
 
 -- Reconciliation finds no missing entries after booking.
-SELECT set_config('request.jwt.claims', json_build_object('sub', (SELECT user_id FROM _p4_users WHERE slot = 'requester'))::text, true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', (SELECT user_id FROM _p2_users WHERE slot = 'admin'))::text, true);
 SELECT is(
   jsonb_array_length(public.reconcile_trade_volume()->'missingDealIds'),
   0,
@@ -2647,7 +2647,17 @@ SELECT has_function('public', 'reconcile_rfq_status', ARRAY[]::text[], 'reconcil
 SELECT has_function('public', 'reconcile_deal_decision', ARRAY[]::text[], 'reconcile_deal_decision() exists');
 SELECT has_function('public', 'reconcile_document_metadata', ARRAY[]::text[], 'reconcile_document_metadata() exists');
 
+-- C-4/C-5: a trader cannot read operational internals.
 SELECT set_config('request.jwt.claims', json_build_object('sub', (SELECT user_id FROM _p4_users WHERE slot = 'requester'))::text, true);
+SELECT throws_ok(
+  $$SELECT public.health_check()$$,
+  'P0001',
+  'not_authorized',
+  'a trader cannot read the health check'
+);
+
+-- Platform admin can.
+SELECT set_config('request.jwt.claims', json_build_object('sub', (SELECT user_id FROM _p2_users WHERE slot = 'admin'))::text, true);
 
 SELECT ok(
   (public.health_check()->>'database')::boolean,
@@ -2664,6 +2674,59 @@ SELECT ok(
 SELECT ok(
   jsonb_array_length(public.reconcile_document_metadata()->'documentsWithoutVersion') >= 1,
   'reconciliation finds the generated document without a version'
+);
+
+SELECT set_config('request.jwt.claims', '', true);
+
+-- ============================================
+-- P16-fixes: review regression tests
+-- ============================================
+
+-- C-1: a user without RFQ_RESPOND cannot submit a quotation.
+SELECT set_config('request.jwt.claims', json_build_object('sub', (SELECT user_id FROM _p4_users WHERE slot = 'viewer'))::text, true);
+SELECT throws_ok(
+  $$SELECT public.submit_quote_response_v2(jsonb_build_object(
+    'invitationId', gen_random_uuid(),
+    'clientResponseId', gen_random_uuid(),
+    'responseTerms', jsonb_build_object(
+      'schemaVersion', 1,
+      'commercial', jsonb_build_object('validUntil', (now() + interval '1 day')),
+      'material', '{}'::jsonb, 'assay', '{}'::jsonb, 'logistics', '{}'::jsonb,
+      'pricingComponents', jsonb_build_array(jsonb_build_object('componentType','PREMIUM','label','x','calculationMethod','FIXED_AMOUNT','numericValue','1','currencyCode','USD','chargeDirection','PAYABLE_BY_REQUESTER'))
+    )
+  ))$$,
+  'P0001',
+  'not_authorized',
+  'a user without RFQ_RESPOND cannot submit a quotation'
+);
+SELECT throws_ok(
+  $$SELECT public.counter_quote_response_v2(jsonb_build_object(
+    'parentResponseId', gen_random_uuid(),
+    'clientResponseId', gen_random_uuid(),
+    'responseTerms', jsonb_build_object(
+      'schemaVersion', 1,
+      'commercial', jsonb_build_object('validUntil', (now() + interval '1 day')),
+      'material', '{}'::jsonb, 'assay', '{}'::jsonb, 'logistics', '{}'::jsonb,
+      'pricingComponents', jsonb_build_array(jsonb_build_object('componentType','PREMIUM','label','x','calculationMethod','FIXED_AMOUNT','numericValue','1','currencyCode','USD','chargeDirection','PAYABLE_BY_REQUESTER'))
+    )
+  ))$$,
+  'P0001',
+  'not_authorized',
+  'a user without RFQ_COUNTER cannot counter a quotation'
+);
+
+-- C-3: the deal snapshot captures organization display names.
+SELECT ok(
+  (SELECT commercial_terms_snapshot->>'requesterOrganizationDisplayName' IS NOT NULL
+   FROM public.trade_deals WHERE id = (SELECT (result->'deal'->>'id')::uuid FROM _p8_deal)),
+  'the deal snapshot captures organization display names'
+);
+
+-- H-5: the booked response is marked accepted.
+SELECT is(
+  (SELECT status FROM public.quote_responses WHERE id = (SELECT (result->'response'->>'id')::uuid FROM _p8_bob_resp)),
+  'accepted',
+  'the booked response is marked accepted'
 );
 
 SELECT set_config('request.jwt.claims', '', true);
