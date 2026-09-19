@@ -1,0 +1,470 @@
+{
+  "$ref": "#/definitions/SELL_DORE_rfq",
+  "definitions": {
+    "SELL_DORE_rfq": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [
+            1
+          ]
+        },
+        "commercial": {
+          "type": "object",
+          "properties": {
+            "transactionType": {
+              "type": "string",
+              "enum": [
+                "REFINE_AND_RETURN",
+                "SELL_DORE",
+                "REFINE_AND_SELL",
+                "BUY_REFINED_METAL",
+                "SELL_REFINED_METAL",
+                "FABRICATE_METAL",
+                "BUY_FEEDSTOCK"
+              ]
+            },
+            "reference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "responseDeadline": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "settlementCurrency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "priceBasisPreference": {
+              "type": "string",
+              "enum": [
+                "OUTRIGHT",
+                "BENCHMARK_PLUS_DIFFERENTIAL",
+                "FIXING",
+                "FORMULA",
+                "OPEN_TO_QUOTE"
+              ]
+            },
+            "benchmarkPreference": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "paymentTermsPreference": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "taxContext": {
+              "type": "string",
+              "enum": [
+                "EXCLUSIVE",
+                "INCLUSIVE",
+                "EXEMPT",
+                "REVERSE_CHARGE",
+                "TO_BE_DETERMINED"
+              ]
+            },
+            "partialFulfilmentAllowed": {
+              "type": "boolean"
+            },
+            "notes": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "settlementTiming": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "transactionType",
+            "responseDeadline",
+            "partialFulfilmentAllowed"
+          ],
+          "additionalProperties": false
+        },
+        "material": {
+          "type": "object",
+          "properties": {
+            "primaryMetal": {
+              "type": "string",
+              "enum": [
+                "AU",
+                "AG",
+                "PT",
+                "PD",
+                "OTHER"
+              ]
+            },
+            "materialForm": {
+              "type": "string",
+              "enum": [
+                "DORE",
+                "CONCENTRATE",
+                "ORE",
+                "SCRAP",
+                "BAR",
+                "GRAIN",
+                "ACCOUNT_BALANCE"
+              ]
+            },
+            "productName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "productCode": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "quantity": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?$"
+            },
+            "quantityUnit": {
+              "type": "string",
+              "enum": [
+                "KG",
+                "G",
+                "TOZ",
+                "MT",
+                "PCS"
+              ]
+            },
+            "quantityTolerancePct": {
+              "type": "string",
+              "pattern": "^-?\\d+(\\.\\d+)?$"
+            },
+            "declaredFineness": {
+              "type": "string",
+              "pattern": "^-?\\d+(\\.\\d+)?$"
+            },
+            "lotCount": {
+              "type": "integer",
+              "exclusiveMinimum": true,
+              "minimum": 0
+            },
+            "packaging": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "inventoryReferences": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "maxItems": 100
+            },
+            "doreWeight": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?$"
+            },
+            "expectedMetalContents": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "elementCode": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20
+                  },
+                  "proportion": {
+                    "type": "string",
+                    "pattern": "^-?\\d+(\\.\\d+)?$"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "PCT",
+                      "PPM"
+                    ]
+                  }
+                },
+                "required": [
+                  "elementCode",
+                  "proportion",
+                  "unit"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 100
+            },
+            "originReference": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "lotReferences": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "primaryMetal",
+            "materialForm",
+            "productName",
+            "quantity",
+            "quantityUnit"
+          ],
+          "additionalProperties": false
+        },
+        "assay": {
+          "type": "object",
+          "properties": {
+            "assayStatus": {
+              "type": "string",
+              "enum": [
+                "NOT_AVAILABLE",
+                "PROVISIONAL",
+                "FINAL"
+              ]
+            },
+            "assayMethod": {
+              "type": "string",
+              "enum": [
+                "FIRE_ASSAY",
+                "XRF",
+                "ICP",
+                "OTHER"
+              ]
+            },
+            "assayDate": {
+              "type": "string",
+              "format": "date"
+            },
+            "laboratoryName": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "declaredComposition": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "elementCode": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20
+                  },
+                  "proportion": {
+                    "type": "string",
+                    "pattern": "^-?\\d+(\\.\\d+)?$"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "PCT",
+                      "PPM"
+                    ]
+                  }
+                },
+                "required": [
+                  "elementCode",
+                  "proportion",
+                  "unit"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 100
+            },
+            "settlementAssayPreference": {
+              "type": "string",
+              "enum": [
+                "SELLER",
+                "BUYER",
+                "REFINER",
+                "INDEPENDENT",
+                "UMPIRE"
+              ]
+            },
+            "samplingMethod": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "umpireTerms": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "assayDocumentIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "maxItems": 100
+            },
+            "existingAssayReference": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "settlementAssayMethod": {
+              "type": "string",
+              "enum": [
+                "FIRE_ASSAY",
+                "XRF",
+                "ICP",
+                "OTHER"
+              ]
+            }
+          },
+          "required": [
+            "assayStatus"
+          ],
+          "additionalProperties": false
+        },
+        "logistics": {
+          "type": "object",
+          "properties": {
+            "currentLocation": {
+              "type": "object",
+              "properties": {
+                "countryCode": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{2}$"
+                },
+                "locality": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "postalCode": {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                "address": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "countryCode",
+                "locality"
+              ],
+              "additionalProperties": false
+            },
+            "deliveryLocation": {
+              "type": "object",
+              "properties": {
+                "countryCode": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{2}$"
+                },
+                "locality": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "postalCode": {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                "address": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "countryCode",
+                "locality"
+              ],
+              "additionalProperties": false
+            },
+            "availabilityFrom": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "deliveryWindowEnd": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "incoterm": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "transportResponsibility": {
+              "type": "string",
+              "enum": [
+                "REQUESTER",
+                "RESPONDER",
+                "THIRD_PARTY",
+                "TO_BE_AGREED"
+              ]
+            },
+            "insuranceResponsibility": {
+              "type": "string",
+              "enum": [
+                "REQUESTER",
+                "RESPONDER",
+                "THIRD_PARTY",
+                "TO_BE_AGREED"
+              ]
+            },
+            "securityRequirements": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "exportImportConstraints": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "logisticsDocumentIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "maxItems": 100
+            },
+            "pickupLocation": {
+              "type": "object",
+              "properties": {
+                "countryCode": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{2}$"
+                },
+                "locality": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "postalCode": {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                "address": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "countryCode",
+                "locality"
+              ],
+              "additionalProperties": false
+            },
+            "riskTransferPoint": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "currentLocation",
+            "availabilityFrom"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "commercial",
+        "material",
+        "assay",
+        "logistics"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

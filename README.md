@@ -313,11 +313,12 @@ npm run supabase:link
 npm run supabase:push
 ```
 
-This pushes both migrations:
+This pushes all timestamped migrations in `supabase/migrations/` (schema,
+functions, triggers, RLS, grants, and the trading platform tables). To rebuild
+a local database from scratch, run:
 
-```text
-supabase/migrations/20260320010000_xchat_realtime_persistence.sql
-supabase/migrations/20260320011000_xchat_security_hardening.sql
+```sh
+npm run supabase:reset
 ```
 
 5. In Supabase Auth, enable either email/password or magic-link authentication for your users.
@@ -344,9 +345,8 @@ Security notes:
 Manual fallback if you prefer SQL Editor:
 
 ```sql
--- Apply both files in order:
--- 1) supabase/migrations/20260320010000_xchat_realtime_persistence.sql
--- 2) supabase/migrations/20260320011000_xchat_security_hardening.sql
+-- Apply all timestamped migrations in supabase/migrations/ in order, or use
+-- `supabase db reset` to rebuild the local database from migrations + seed.
 ```
 
 Notes:

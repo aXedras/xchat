@@ -3,16 +3,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApiKeyForm from "@/components/admin/ApiKeyForm";
 import CompanyRegistrationForm from "@/components/admin/CompanyRegistrationForm";
 import FeeRulesForm from "@/components/admin/FeeRulesForm";
+import OrganizationManagement from "@/components/admin/OrganizationManagement";
 import SystemSettingsForm from "@/components/admin/SystemSettingsForm";
 import { useAdminConnectionState } from "@/hooks/useAdminConnectionState";
+import { useTradingContext } from "@/hooks/useTradingContext";
 import { useTranslation } from "react-i18next";
 
 const Admin = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("system");
   const connectionState = useAdminConnectionState();
+  const { context } = useTradingContext();
   const isConnected = connectionState.status === "connected";
   const protectedTabTitle = isConnected ? undefined : t("admin.protectedTabTitle");
+  const canManageOrganizations =
+    context?.entitlements.includes("ORG_CAPABILITIES_MANAGE") ?? false;
 
   useEffect(() => {
     if (!isConnected && ["companies", "fees"].includes(activeTab)) {
@@ -37,6 +42,11 @@ const Admin = () => {
         <TabsList>
           <TabsTrigger value="system">{t("admin.systemSettings")}</TabsTrigger>
           <TabsTrigger value="api">{t("admin.apiConnection")}</TabsTrigger>
+          {canManageOrganizations && (
+            <TabsTrigger value="organizations">
+              {t("admin.organizations")}
+            </TabsTrigger>
+          )}
           <TabsTrigger
             value="companies"
             disabled={!isConnected}
@@ -66,6 +76,15 @@ const Admin = () => {
           </p>
           <ApiKeyForm />
         </TabsContent>
+
+        {canManageOrganizations && (
+          <TabsContent value="organizations" className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t("admin.organizationsTabDesc")}
+            </p>
+            <OrganizationManagement />
+          </TabsContent>
+        )}
 
         <TabsContent value="companies" className="space-y-4">
           <p className="text-sm text-muted-foreground">

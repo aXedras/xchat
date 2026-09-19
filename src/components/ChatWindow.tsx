@@ -1,4 +1,5 @@
 import { Chat, Message, QuoteInvitationRecord, QuoteResponseRecord, RfqTerms } from "@/types/chat";
+import { RfqTermsV2 } from "@/schemas";
 import MessageInput from "@/components/MessageInput";
 import ChatHeader from "./chat/ChatHeader";
 import MessageList from "./chat/MessageList";
@@ -14,6 +15,7 @@ interface ChatWindowProps {
   responses: Record<string, QuoteResponseRecord[]>;
   onSendMessage: (content: string) => Promise<boolean> | boolean;
   onSendRfq: (terms: RfqTerms, content: string) => Promise<boolean> | boolean;
+  onSendRfqV2?: (terms: RfqTermsV2, recipientIds: string[], message: string) => Promise<boolean> | boolean;
   onLoadResponses: (invitationId: string) => Promise<void>;
   onSubmitQuote: (invitationId: string, premium: string, notes?: string | null) => Promise<unknown>;
   onCounterQuote: (invitationId: string, parentResponseId: string, premium: string, notes?: string | null) => Promise<unknown>;
@@ -30,6 +32,7 @@ const ChatWindow = ({
   responses,
   onSendMessage,
   onSendRfq,
+  onSendRfqV2,
   onLoadResponses,
   onSubmitQuote,
   onCounterQuote,
@@ -60,7 +63,7 @@ const ChatWindow = ({
             onRejectQuote={onRejectQuote}
             onBookQuote={onBookQuote}
           />
-          <MessageInput disabled={sending} onSendMessage={onSendMessage} onSendRfq={onSendRfq} />
+          <MessageInput disabled={sending} onSendMessage={onSendMessage} onSendRfq={onSendRfq} onSendRfqV2={onSendRfqV2} />
         </div>
         <SidePanelContainer chat={chat} invitations={invitations} />
       </div>

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Chat, ParticipantRecord, QuoteInvitationRecord, QuoteResponseRecord, RfqTerms, SendMessagesResult } from "@/types/chat";
+import { Chat, QuoteInvitationRecord, QuoteResponseRecord, RfqTerms, SendMessagesResult } from "@/types/chat";
 import { useChatLists } from "./useChatLists";
 import { useMessages } from "./useMessages";
 import { useChatSynchronization } from "./useChatSynchronization";
 import { useOutgoingMessage, SendInput } from "./useOutgoingMessage";
 import { messageRepository, MessagingError } from "@/services/persistence/messageRepository";
+import { useTradingParticipants } from "./useTradingParticipants";
 import { realtimeBus } from "@/services/realtimeBus";
 import { useToast } from "./use-toast";
 import i18n from "@/i18n";
@@ -14,17 +15,13 @@ export function useChatState() {
   const { messages, setMessages } = useMessages();
 
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
-  const [participants, setParticipants] = useState<ParticipantRecord[]>([]);
+  const { participants, refresh: refreshParticipants } = useTradingParticipants();
   const [quoteInvitations, setQuoteInvitations] = useState<QuoteInvitationRecord[]>([]);
   const [quoteResponses, setQuoteResponses] = useState<Record<string, QuoteResponseRecord[]>>({});
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const pendingClientIds = useRef<Map<string, string>>(new Map());
   const { toast } = useToast();
-
-  const refreshParticipants = useCallback(async () => {
-    setParticipants(await messageRepository.listParticipants());
-  }, []);
 
   const refreshQuoteInvitations = useCallback(async () => {
     setQuoteInvitations(await messageRepository.listQuoteInvitations());
@@ -34,9 +31,8 @@ export function useChatState() {
   const { send } = useOutgoingMessage({ setMessages, refreshChats });
 
   useEffect(() => {
-    void refreshParticipants().catch(() => setError(i18n.t("errors.loadParticipants")));
     void refreshQuoteInvitations().catch(() => setError(i18n.t("errors.loadInvitations")));
-  }, [refreshParticipants, refreshQuoteInvitations]);
+  }, [refreshQuoteInvitations]);
 
   const handleChatSelect = useCallback(
     (chat: Chat) => {

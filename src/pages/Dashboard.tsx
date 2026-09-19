@@ -17,9 +17,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useChatState } from "@/hooks/useChatState";
+import { useRfqDispatch } from "@/hooks/useRfqDispatch";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { Chat, RfqTerms } from "@/types/chat";
+import { RfqTermsV2 } from "@/schemas";
 
 const Dashboard = () => {
   const { t } = useTranslation();
@@ -34,6 +36,7 @@ const Dashboard = () => {
     error,
     sending,
     handleChatSelect,
+    refreshChats,
     sendDirect,
     sendToRecipients,
     sendRfq,
@@ -46,6 +49,8 @@ const Dashboard = () => {
     setSelectedChat,
     deleteChat,
   } = useChatState();
+
+  const { send: sendRfqV2 } = useRfqDispatch();
 
   const [showNewChat, setShowNewChat] = useState(false);
   const [pendingDeleteChat, setPendingDeleteChat] = useState<Chat | null>(null);
@@ -73,6 +78,21 @@ const Dashboard = () => {
       terms,
     );
     return result !== undefined;
+  };
+
+  const handleSendRfqV2 = async (
+    terms: RfqTermsV2,
+    recipientIds: string[],
+    message: string,
+  ): Promise<boolean> => {
+    try {
+      const result = await sendRfqV2(terms, recipientIds, message);
+      void refreshChats();
+      return result !== undefined;
+    } catch {
+      toast({ variant: "destructive", title: t("errors.sendRfqV2") });
+      return false;
+    }
   };
 
   const handleRequestDeleteChat = (chatId: string) => {
@@ -130,6 +150,7 @@ const Dashboard = () => {
               responses={quoteResponses}
               onSendMessage={handleSendMessage}
               onSendRfq={handleSendRfq}
+              onSendRfqV2={handleSendRfqV2}
               onLoadResponses={loadQuoteResponses}
               onSubmitQuote={submitQuote}
               onCounterQuote={counterQuote}

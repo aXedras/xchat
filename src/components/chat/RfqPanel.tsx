@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QuoteInvitationRecord, QuoteResponseRecord } from "@/types/chat";
 import { useTranslation } from "react-i18next";
+import QuotationComposer from "@/components/chat/trading/QuotationComposer";
+import { useQuoteResponseV2 } from "@/hooks/useQuoteResponseV2";
+import { QuotationTermsV2 } from "@/schemas";
 
 interface RfqPanelProps {
   invitation: QuoteInvitationRecord;
@@ -39,6 +42,7 @@ const RfqPanel = ({
   const [premium, setPremium] = useState("");
   const [notes, setNotes] = useState("");
   const [counterTarget, setCounterTarget] = useState<string | null>(null);
+  const { submit: submitV2, counter: counterV2, sending: sendingV2 } = useQuoteResponseV2();
 
   const termLabel: Record<string, string> = {
     quantity: t("rfq.quantity"),
@@ -71,8 +75,27 @@ const RfqPanel = ({
   }, [invitation.id, onLoadResponses]);
 
   const terms = invitation.terms ?? {};
+  const isV2 =
+    typeof terms.schemaVersion === "number" && terms.schemaVersion >= 1;
+  const v2TransactionType = isV2
+    ? (terms.commercial as Record<string, unknown> | undefined)?.transactionType
+    : undefined;
 
   const hasInitialQuote = responses.some((response) => !response.parentResponseId);
+
+  const submitV2Quotation = async (quotation: QuotationTermsV2) => {
+    try {
+      if (counterTarget) {
+        await counterV2(counterTarget, quotation);
+        setCounterTarget(null);
+      } else {
+        await submitV2(invitation.id, quotation);
+      }
+      onLoadResponses(invitation.id);
+    } catch {
+      // The composer surfaces validation errors; transport errors are non-fatal here.
+    }
+  };
 
   const submitInitial = async () => {
     if (!premium.trim()) return;
@@ -154,7 +177,22 @@ const RfqPanel = ({
         )}
       </div>
 
-      {invitation.effectiveStatus === "open" && ((!isOwner && !hasInitialQuote) || counterTarget) && (
+      {isV2 &&
+        v2TransactionType &&
+        invitation.effectiveStatus === "open" &&
+        (!isOwner || counterTarget) && (
+          <div className="border-t border-border/50 pt-2">
+            <QuotationComposer
+              transactionType={String(v2TransactionType)}
+              disabled={busy || sendingV2}
+              onSubmit={(quotation) => void submitV2Quotation(quotation)}
+            />
+          </div>
+        )}
+
+      {!isV2 &&
+        invitation.effectiveStatus === "open" &&
+        ((!isOwner && !hasInitialQuote) || counterTarget) && (
         <div className="space-y-2 border-t border-border/50 pt-2">
           {counterTarget && (
             <p className="text-xs text-muted-foreground">{t("rfq.counteringNote")}</p>

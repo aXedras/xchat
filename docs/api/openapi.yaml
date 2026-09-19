@@ -1,0 +1,575 @@
+openapi: 3.1.0
+info:
+  title: xChat Trading API
+  version: 0.1.0
+  license:
+    name: UNLICENSED
+  description: >
+    Technology-independent contract for the xChat trading domain. The React
+    application consumes these use cases through Supabase RPCs (SECURITY DEFINER,
+    RLS-protected); this document maps each RPC to an HTTP use case so a future
+    HTTP gateway can be added without reinventing domain payloads.
+servers:
+  - url: http://127.0.0.1:54321
+    description: Local Supabase
+security:
+  - bearerAuth: []
+paths:
+  /v1/me/trading-context:
+    get:
+      operationId: getMyTradingContext
+      summary: Current user trading context
+      responses:
+        "200":
+          description: Trading context for the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradingContext"
+  /v1/transaction-types:
+    get:
+      operationId: listAvailableTransactionTypes
+      summary: List transaction types available to the user
+      responses:
+        "200":
+          description: Available transaction types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransactionTypeAvailability"
+  /v1/rfqs/validate:
+    post:
+      operationId: validateQuoteRequest
+      summary: Validate an RFQ payload without persisting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateRfqRequest"
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteRequestValidationResult"
+  /v1/rfqs:
+    post:
+      operationId: createAndDispatchQuoteRequest
+      summary: Create and dispatch an RFQ to recipients
+      description: >
+        Idempotent via clientOperationId. Recipient identities are isolated;
+        no recipient payload reveals sibling recipients.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRfqRequest"
+      responses:
+        "200":
+          description: Dispatch result (completed, partial or failed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RfqDispatchResult"
+  /v1/rfqs/{id}:
+    get:
+      operationId: getQuoteRequestProjection
+      summary: Requester projection for an RFQ
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Requester projection (owner only)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequesterRfqProjection"
+  /v1/rfqs/{id}/cancel:
+    post:
+      operationId: cancelQuoteRequest
+      summary: Cancel an open RFQ
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Cancellation acknowledged
+  /v1/rfq-invitations/{id}:
+    get:
+      operationId: getQuoteInvitationProjection
+      summary: Recipient projection for an invitation
+      parameters:
+        - $ref: "#/components/parameters/InvitationId"
+      responses:
+        "200":
+          description: Recipient projection (invited user only)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipientInvitationProjection"
+  /v1/rfq-invitations/{id}/view:
+    post:
+      operationId: markQuoteInvitationViewed
+      summary: Mark an invitation viewed (idempotent)
+      parameters:
+        - $ref: "#/components/parameters/InvitationId"
+      responses:
+        "200":
+          description: View recorded
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase access token (JWT) issued by Supabase Auth.
+  parameters:
+    RequestId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [code, messageKey, correlationId, retryable]
+      properties:
+        code:
+          type: string
+          description: Machine-readable business error code.
+        messageKey:
+          type: string
+          description: i18n key used by the client to render a localized message.
+        correlationId:
+          type: string
+          format: uuid
+        details:
+          type: object
+          additionalProperties: true
+        retryable:
+          type: boolean
+    TradingContext:
+      type: object
+      additionalProperties: false
+      required: [userId, membership, capabilities, entitlements, flags]
+      properties:
+        userId:
+          type: [string, "null"]
+          format: uuid
+
+        membership:
+          oneOf:
+            - $ref: "#/components/schemas/OrganizationMembership"
+            - type: "null"
+        capabilities:
+          type: array
+          items:
+            type: string
+        entitlements:
+          type: array
+          items:
+            type: string
+        flags:
+          type: object
+          additionalProperties:
+            type: boolean
+    OrganizationMembership:
+      type: object
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        organizationName:
+          type: string
+        primaryUnitId:
+          type: [string, "null"]
+          format: uuid
+
+        jobTitle:
+          type: [string, "null"]
+
+        status:
+          type: string
+    TransactionTypeAvailability:
+      type: object
+      additionalProperties: false
+      required: [code, available]
+      properties:
+        code:
+          type: string
+          enum:
+            - REFINE_AND_RETURN
+            - SELL_DORE
+            - REFINE_AND_SELL
+            - BUY_REFINED_METAL
+            - SELL_REFINED_METAL
+            - FABRICATE_METAL
+            - BUY_FEEDSTOCK
+        available:
+          type: boolean
+    ValidateRfqRequest:
+      type: object
+      required: [transactionType, terms]
+      properties:
+        transactionType:
+          type: string
+        terms:
+          $ref: "#/components/schemas/RfqTerms"
+    QuoteRequestValidationResult:
+      type: object
+      required: [ok, transactionType]
+      properties:
+        ok:
+          type: boolean
+        transactionType:
+          type: string
+    CreateRfqRequest:
+      type: object
+      additionalProperties: false
+      required: [clientOperationId, transactionType, terms, recipientIds]
+      properties:
+        clientOperationId:
+          type: string
+          format: uuid
+          description: Client-generated idempotency key (reused on unknown results).
+        schemaVersion:
+          type: integer
+          const: 1
+        transactionType:
+          type: string
+        terms:
+          $ref: "#/components/schemas/RfqTerms"
+        recipientIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 100
+        message:
+          type: string
+          maxLength: 10000
+    RfqTerms:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, commercial, material, assay, logistics]
+      description: >
+        Structured four-tab RFQ terms. The per-transaction-type variants are the
+        authoritative JSON Schemas in docs/api/schemas/rfq/*.v1.json.
+      properties:
+        schemaVersion:
+          type: integer
+          const: 1
+        commercial:
+          type: object
+          additionalProperties: false
+        material:
+          type: object
+          additionalProperties: false
+        assay:
+          type: object
+          additionalProperties: false
+        logistics:
+          type: object
+          additionalProperties: false
+    RfqDispatchResult:
+      type: object
+      required: [ok, quoteRequestId, dispatch]
+      properties:
+        ok:
+          type: boolean
+        quoteRequestId:
+          type: string
+          format: uuid
+        dispatch:
+          type: object
+          required: [id, status, messages, recipients]
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              type: string
+              enum: [completed, partial, failed]
+            messages:
+              type: array
+              items:
+                type: object
+            recipients:
+              type: array
+              items:
+                type: object
+                required: [requestedRecipientUserId, status]
+                properties:
+                  requestedRecipientUserId:
+                    type: string
+                    format: uuid
+                  recipientUserId:
+                    type: [string, "null"]
+                    format: uuid
+
+                  status:
+                    type: string
+                    enum: [accepted, rejected]
+                  errorCode:
+                    type: [string, "null"]
+
+                  messageId:
+                    type: [string, "null"]
+                    format: uuid
+
+    RequesterRfqProjection:
+      type: object
+      required: [id, schemaVersion, status, effectiveStatus, terms, createdAt, invitations]
+      properties:
+        id:
+          type: string
+          format: uuid
+        publicReference:
+          type: [string, "null"]
+
+        transactionType:
+          type: [string, "null"]
+
+        schemaVersion:
+          type: integer
+        status:
+          type: string
+        effectiveStatus:
+          type: string
+        responseDeadline:
+          type: [string, "null"]
+          format: date-time
+
+        terms:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        closedAt:
+          type: [string, "null"]
+          format: date-time
+
+        closeReason:
+          type: [string, "null"]
+
+        invitations:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequesterInvitationEntry"
+    RequesterInvitationEntry:
+      type: object
+      required: [invitationId, recipientUserId, status]
+      properties:
+        invitationId:
+          type: string
+          format: uuid
+        recipientUserId:
+          type: string
+          format: uuid
+        recipientOrganizationId:
+          type: [string, "null"]
+          format: uuid
+
+        status:
+          type: string
+        deliveredAt:
+          type: [string, "null"]
+          format: date-time
+
+        firstViewedAt:
+          type: [string, "null"]
+          format: date-time
+
+        respondedAt:
+          type: [string, "null"]
+          format: date-time
+
+        closedAt:
+          type: [string, "null"]
+          format: date-time
+
+    RecipientInvitationProjection:
+      type: object
+      required: [invitationId, requestId, status, effectiveStatus, terms, createdAt]
+      description: >
+        Isolated recipient view; never contains sibling invitations, counts or
+        winner data.
+      properties:
+        invitationId:
+          type: string
+          format: uuid
+        requestId:
+          type: string
+          format: uuid
+        publicReference:
+          type: [string, "null"]
+
+        transactionType:
+          type: [string, "null"]
+
+        status:
+          type: string
+        effectiveStatus:
+          type: string
+        responseDeadline:
+          type: [string, "null"]
+          format: date-time
+
+        terms:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        deliveredAt:
+          type: [string, "null"]
+          format: date-time
+
+        firstViewedAt:
+          type: [string, "null"]
+          format: date-time
+
+        respondedAt:
+          type: [string, "null"]
+          format: date-time
+
+    Quotation:
+      type: object
+      required: [schemaVersion, commercial, material, assay, logistics, pricingComponents]
+      properties:
+        schemaVersion:
+          type: integer
+          const: 1
+        commercial:
+          type: object
+        material:
+          type: object
+        assay:
+          type: object
+        logistics:
+          type: object
+        pricingComponents:
+          type: array
+          items:
+            $ref: "#/components/schemas/PricingComponent"
+    PricingComponent:
+      type: object
+      required: [componentType, label, calculationMethod, chargeDirection]
+      properties:
+        componentType:
+          type: string
+          enum:
+            - METAL_PRICE
+            - PREMIUM
+            - DISCOUNT
+            - REFINING_CHARGE
+            - TREATMENT_CHARGE
+            - ASSAY_FEE
+            - FABRICATION_FEE
+            - LOGISTICS_FEE
+            - INSURANCE_FEE
+            - MINIMUM_CHARGE
+            - TAX
+            - BYPRODUCT_CREDIT
+            - OTHER
+        label:
+          type: string
+        calculationMethod:
+          type: string
+          enum: [FIXED_AMOUNT, PER_UNIT, PERCENTAGE, BASIS_POINTS, FORMULA, INCLUDED]
+        numericValue:
+          type: string
+        formulaText:
+          type: string
+        currencyCode:
+          type: string
+        unitCode:
+          type: string
+        chargeDirection:
+          type: string
+          enum: [PAYABLE_BY_REQUESTER, PAYABLE_BY_RESPONDER, CREDIT_TO_REQUESTER, CREDIT_TO_RESPONDER]
+        taxTreatment:
+          type: string
+        minimumAmount:
+          type: string
+        maximumAmount:
+          type: string
+        notes:
+          type: string
+    DealProjection:
+      type: object
+      required: [id, status, confirmationStatus]
+      properties:
+        id:
+          type: string
+          format: uuid
+        requestId:
+          type: string
+          format: uuid
+        dealReference:
+          type: string
+        status:
+          type: string
+        confirmationStatus:
+          type: string
+          enum: [not_generated, generation_pending, generated, sent, acknowledged, failed]
+        bookedAt:
+          type: string
+          format: date-time
+        commercialTermsSnapshot:
+          type: object
+    DocumentMetadata:
+      type: object
+      required: [id, documentType, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentType:
+          type: string
+          enum: [rfq_summary, quotation, trade_confirmation]
+        status:
+          type: string
+        versionNo:
+          type: integer
+        sha256:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+    DocumentAccess:
+      type: object
+      required: [granteeType, granteeId, rights]
+      properties:
+        granteeType:
+          type: string
+          enum: [organization, user]
+        granteeId:
+          type: string
+          format: uuid
+        rights:
+          type: array
+          items:
+            type: string
+            enum: [view, download]
+        validUntil:
+          type: [string, "null"]
+          format: date-time
+
+tags:
+  - name: trading
+    description: Trading platform use cases

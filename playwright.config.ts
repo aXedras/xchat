@@ -15,7 +15,10 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Tests share seeded users (alice/bob/carol/admin) and the local Supabase
+  // instance; parallel workers cause realtime/DB interference between specs.
+  // Run serially everywhere (CI already did).
+  workers: 1,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: playwrightBaseUrl,

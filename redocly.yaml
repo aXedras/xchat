@@ -1,0 +1,15 @@
+extends:
+  - recommended
+
+rules:
+  # The project has no published SPDX license; UNLICENSED is the closest fit.
+  info-license-strict: off
+  # Forward-looking schemas (Quotation, DealProjection, DocumentMetadata,
+  # DocumentAccess) are documented as part of the contract before their phases
+  # (P7-P10) wire them into endpoints, so they are intentionally not yet
+  # referenced by any operation.
+  no-unused-components: off
+  # The error envelope is documented in components.schemas.ErrorEnvelope
+  # (bauplan section 11.4); per-operation 4XX wiring is not meaningful for the
+  # RPC-mapped contract at this stage.
+  operation-4xx-response: off

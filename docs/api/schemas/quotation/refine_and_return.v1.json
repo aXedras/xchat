@@ -1,0 +1,205 @@
+{
+  "$ref": "#/definitions/REFINE_AND_RETURN_quotation",
+  "definitions": {
+    "REFINE_AND_RETURN_quotation": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [
+            1
+          ]
+        },
+        "commercial": {
+          "type": "object",
+          "properties": {
+            "validUntil": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "notes": {
+              "type": "string",
+              "maxLength": 4000
+            }
+          },
+          "required": [
+            "validUntil"
+          ],
+          "additionalProperties": false
+        },
+        "material": {
+          "type": "object",
+          "properties": {
+            "acceptedSpecification": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "toleranceNotes": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "deviations": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "assay": {
+          "type": "object",
+          "properties": {
+            "acceptedAssayProcedure": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "payability": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "deductions": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "umpireTerms": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "metalRetentionTerms": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "logistics": {
+          "type": "object",
+          "properties": {
+            "route": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "leadTime": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "responsibilityNotes": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "turnaroundCommitment": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "additionalProperties": false
+        },
+        "pricingComponents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "componentType": {
+                "type": "string",
+                "enum": [
+                  "METAL_PRICE",
+                  "PREMIUM",
+                  "DISCOUNT",
+                  "REFINING_CHARGE",
+                  "TREATMENT_CHARGE",
+                  "ASSAY_FEE",
+                  "FABRICATION_FEE",
+                  "LOGISTICS_FEE",
+                  "INSURANCE_FEE",
+                  "MINIMUM_CHARGE",
+                  "TAX",
+                  "BYPRODUCT_CREDIT",
+                  "OTHER"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "calculationMethod": {
+                "type": "string",
+                "enum": [
+                  "FIXED_AMOUNT",
+                  "PER_UNIT",
+                  "PERCENTAGE",
+                  "BASIS_POINTS",
+                  "FORMULA",
+                  "INCLUDED"
+                ]
+              },
+              "numericValue": {
+                "type": "string",
+                "pattern": "^-?\\d+(\\.\\d+)?$"
+              },
+              "formulaText": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "currencyCode": {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              "unitCode": {
+                "type": "string",
+                "maxLength": 100
+              },
+              "chargeDirection": {
+                "type": "string",
+                "enum": [
+                  "PAYABLE_BY_REQUESTER",
+                  "PAYABLE_BY_RESPONDER",
+                  "CREDIT_TO_REQUESTER",
+                  "CREDIT_TO_RESPONDER"
+                ]
+              },
+              "taxTreatment": {
+                "type": "string",
+                "enum": [
+                  "EXCLUSIVE",
+                  "INCLUSIVE",
+                  "EXEMPT",
+                  "REVERSE_CHARGE",
+                  "TO_BE_DETERMINED"
+                ]
+              },
+              "minimumAmount": {
+                "type": "string",
+                "pattern": "^-?\\d+(\\.\\d+)?$"
+              },
+              "maximumAmount": {
+                "type": "string",
+                "pattern": "^-?\\d+(\\.\\d+)?$"
+              },
+              "notes": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "componentType",
+              "label",
+              "calculationMethod",
+              "chargeDirection"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "commercial",
+        "material",
+        "assay",
+        "logistics",
+        "pricingComponents"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
