@@ -120,6 +120,191 @@ paths:
       responses:
         "200":
           description: View recorded
+  /v1/rfq-invitations/{id}/decline:
+    post:
+      operationId: declineQuoteInvitation
+      summary: Decline an invitation
+      parameters:
+        - $ref: "#/components/parameters/InvitationId"
+      responses:
+        "200":
+          description: Invitation declined
+  /v1/rfq-invitations/{id}/quotations:
+    post:
+      operationId: submitQuoteResponse
+      summary: Submit a structured quotation (idempotent)
+      parameters:
+        - $ref: "#/components/parameters/InvitationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [clientResponseId, responseTerms]
+              properties:
+                clientResponseId:
+                  type: string
+                  format: uuid
+                responseTerms:
+                  $ref: "#/components/schemas/Quotation"
+      responses:
+        "200":
+          description: Quotation submitted
+  /v1/quotations/{id}/counter:
+    post:
+      operationId: counterQuoteResponse
+      summary: Propose a counter offer (append-only child)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [parentResponseId, clientResponseId, responseTerms]
+              properties:
+                parentResponseId:
+                  type: string
+                  format: uuid
+                clientResponseId:
+                  type: string
+                  format: uuid
+                responseTerms:
+                  $ref: "#/components/schemas/Quotation"
+      responses:
+        "200":
+          description: Counter submitted
+  /v1/quotations/{id}/reject:
+    post:
+      operationId: rejectQuoteResponse
+      summary: Reject a quotation (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Quotation rejected
+  /v1/quotations/{id}/book:
+    post:
+      operationId: bookQuoteResponse
+      summary: Book a quotation into a deal (single award)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Deal booked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DealProjection"
+  /v1/deals/{id}:
+    get:
+      operationId: getDealProjection
+      summary: Deal projection (parties only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Deal projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DealProjection"
+  /v1/counterparties/{orgId}/summary:
+    get:
+      operationId: getCounterpartySummary
+      summary: Compliance summary for a counterparty
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Counterparty compliance summary
+  /v1/inventory:
+    get:
+      operationId: listInventoryProjection
+      summary: Inventory projection (active-org scoped)
+      responses:
+        "200":
+          description: Inventory lots
+  /v1/trade-volume:
+    get:
+      operationId: listTradeVolume
+      summary: Aggregated trade volume (active-org scoped)
+      responses:
+        "200":
+          description: Trade volume aggregation
+  /v1/trade-volume/imports:
+    post:
+      operationId: createTradeVolumeImportBatch
+      summary: Stage a CSV import batch
+      responses:
+        "200":
+          description: Batch staged
+  /v1/documents/{id}:
+    get:
+      operationId: getDocumentProjection
+      summary: Document projection (grant-checked)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Document metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentMetadata"
+  /v1/documents/{id}/acknowledge:
+    post:
+      operationId: acknowledgeDocument
+      summary: Acknowledge a document (grant-checked)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Document acknowledged
+  /v1/health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      responses:
+        "200":
+          description: Health status
 components:
   securitySchemes:
     bearerAuth:
